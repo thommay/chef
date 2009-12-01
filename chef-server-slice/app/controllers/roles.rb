@@ -7,6 +7,11 @@ class ChefServerSlice::Roles < ChefServerSlice::Application
   
   # GET /roles
   def index
+    begin
+      Chef::Role.sync_from_disk_to_couchdb
+    rescue Net::HTTPServerException => e
+      Chef::Log.debug(e)
+    end
     @role_list = Chef::Role.list(true)
     display(@role_list.collect { |r| absolute_slice_url(:role, r.name) }) 
   end
