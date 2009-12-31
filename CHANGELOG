@@ -1,3 +1,23 @@
+Tue, 29 Dec 2009 19:51:02 +0000
+
+Release Notes - Chef - Version 0.7.16wt1
+
+** This is an unofficial release ** 
+** Bryan McLellan <btm@loftninjas.org> **
+
+** Bug
+    * [CHEF-706] - mount provider fails to mount samba/cifs devices (Device does not exist)
+    * [CHEF-634] - UI fails silently when unable to save node
+    * [CHEF-659] - UI expands some escaped characters from JSON, then fails to encode them again
+
+Tue Dec 22 14:55:25 PST 2009
+
+Release Notes - Chef - Version 0.7.16
+
+** Bug
+    * [CHEF-686] - chef-{server,client,indexer} creating world writable files and directories
+    * [CHEF-812] - file backup permissions less secure than file
+
 Mon Sep 27 6:22:00 NZST 2009
 
 Release Notes - Chef - Version 0.7.14
