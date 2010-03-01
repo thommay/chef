@@ -1,3 +1,17 @@
+Mon, 01 Mar 2010 10:56:36 +0000
+
+Release Notes - Chef - Version 0.7.16.3
+
+** This is an unofficial release ** 
+** Thom May <thom.may@betfair.com> **
+
+** Bug
+    * [CHEF-584] - popen4 detects exit for misbehaving apps
+    * [CHEF-986] - RPM: Should be smarter about using install or upgrade
+
+** Improvement
+    * [CHEF-987] - Yum can install local rpms and do all the dependency jazz
+    * [CHEF-988] - Yum upgrades are fraught with peril
 
 Thu, 07 Jan 2010 16:45:14 -0800
 
