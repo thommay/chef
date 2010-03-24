@@ -71,13 +71,21 @@ describe Chef::CookbookLoader do
       seen[1].should == :openldap
     end
   end
-  
+
   describe "load_cookbooks" do
     it "should find all the cookbooks in the cookbook path" do
       Chef::Config.cookbook_path << File.join(File.dirname(__FILE__), "..", "data", "hidden-cookbooks") 
       @cl.load_cookbooks
       @cl.detect { |cb| cb.name == :openldap }.should_not eql(nil)
       @cl.detect { |cb| cb.name == :apache2 }.should_not eql(nil)
+    end
+  
+    it "should load multiple versions of the same cookbook" do
+      Chef::Config.cookbook_path << File.join(File.dirname(__FILE__), "..", "data", "grill") 
+      @cl.load_cookbooks
+      @cl.detect { |cb| cb.name == :openldap }.should_not eql(nil)
+      @cl.detect { |cb| cb.name == :apache2 }.should_not eql(nil)
+      @cl.cookbook[:openldap].length.should eql(2)
     end
   
     it "should allow you to override an attribute file via cookbook_path" do
@@ -141,8 +149,8 @@ describe Chef::CookbookLoader do
     end
 
     it "should load the metadata for the cookbook" do
-      @cl.metadata[:openldap].name.should == :openldap
-      @cl.metadata[:openldap].should be_a_kind_of(Chef::Cookbook::Metadata)
+      @cl.metadata[:openldap]["0.0.1"].name.should == "openldap"
+      @cl.metadata[:openldap]["0.0.1"].should be_a_kind_of(Chef::Cookbook::Metadata)
     end
 
   end
