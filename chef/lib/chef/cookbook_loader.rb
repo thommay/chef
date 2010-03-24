@@ -21,6 +21,7 @@
 require 'chef/config'
 require 'chef/cookbook'
 require 'chef/cookbook/metadata'
+require 'chef/mixin/deep_merge'
 
 class Chef
   class CookbookLoader
@@ -42,86 +43,60 @@ class Chef
         Dir[File.join(cb_path, "*")].each do |cookbook|
           next unless File.directory?(cookbook)          
           cookbook_name = File.basename(cookbook).to_sym
-          unless cookbook_settings.has_key?(cookbook_name)
-            cookbook_settings[cookbook_name] = { 
-              :attribute_files  => Hash.new,
-              :definition_files => Hash.new,
-              :recipe_files     => Hash.new,
-              :template_files   => Hash.new,
-              :remote_files     => Hash.new,
-              :lib_files        => Hash.new,
-              :resource_files   => Hash.new,
-              :provider_files   => Hash.new,
-              :metadata_files   => Array.new
-            }
-          end
-          ignore_regexes = load_ignore_file(File.join(cookbook, "ignore"))
-          @ignore_regexes[cookbook_name].concat(ignore_regexes)
-          
-          load_files_unless_basename(
-            File.join(cookbook, "attributes", "*.rb"), 
-            cookbook_settings[cookbook_name][:attribute_files]
-          )
-          load_files_unless_basename(
-            File.join(cookbook, "definitions", "*.rb"), 
-            cookbook_settings[cookbook_name][:definition_files]
-          )
-          load_files_unless_basename(
-            File.join(cookbook, "recipes", "*.rb"), 
-            cookbook_settings[cookbook_name][:recipe_files]
-          )
-          load_files_unless_basename(
-            File.join(cookbook, "libraries", "*.rb"),               
-            cookbook_settings[cookbook_name][:lib_files]
-          )
-          load_cascading_files(
-            "*.erb",
-            File.join(cookbook, "templates"),
-            cookbook_settings[cookbook_name][:template_files]
-          )
-          load_cascading_files(
-            "*",
-            File.join(cookbook, "files"),
-            cookbook_settings[cookbook_name][:remote_files]
-          )
-          load_cascading_files(
-            "*.rb",
-            File.join(cookbook, "resources"),
-            cookbook_settings[cookbook_name][:resource_files]
-          )
-          load_cascading_files(
-            "*.rb",
-            File.join(cookbook, "providers"),
-            cookbook_settings[cookbook_name][:provider_files]
-          )
+          cookbook_settings[cookbook_name] ||= Mash.new
 
+          # If we have a metadata file, there's only one version of the cookbook, so
+          # just process it.
           if File.exists?(File.join(cookbook, "metadata.json"))
-            cookbook_settings[cookbook_name][:metadata_files] << File.join(cookbook, "metadata.json")
+            (ver, settings) = process_cb(cookbook, cookbook_name)
+            if cookbook_settings[cookbook_name].has_key?(ver)
+              cookbook_settings[cookbook_name][ver] = Chef::Mixin::DeepMerge.merge(cookbook_settings[cookbook_name][ver], settings)
+            else
+              cookbook_settings[cookbook_name][ver] = settings
+            end
+          else
+            # Otherwise, we've got a directory of versions of a specific cookbook. So we
+            # need to read each one in turn.
+            Dir[File.join(cookbook, "*")].each do |version|
+              next unless File.directory?(version)
+              (ver, settings) = process_cb(version, cookbook_name, File.basename(version))
+              if cookbook_settings[cookbook_name].has_key?(ver)
+                cookbook_settings[cookbook_name][ver] = Chef::Mixin::DeepMerge.merge(cookbook_settings[cookbook_name][ver], settings)
+              else
+                cookbook_settings[cookbook_name][ver] = settings
+              end
+            end
           end
         end
       end
+
       remove_ignored_files_from(cookbook_settings)
       
       cookbook_settings.each_key do |cookbook|
-        @cookbook[cookbook] = Chef::Cookbook.new(cookbook)
-        @cookbook[cookbook].attribute_files = cookbook_settings[cookbook][:attribute_files].values
-        @cookbook[cookbook].definition_files = cookbook_settings[cookbook][:definition_files].values
-        @cookbook[cookbook].recipe_files = cookbook_settings[cookbook][:recipe_files].values
-        @cookbook[cookbook].template_files = cookbook_settings[cookbook][:template_files].values
-        @cookbook[cookbook].remote_files = cookbook_settings[cookbook][:remote_files].values
-        @cookbook[cookbook].lib_files = cookbook_settings[cookbook][:lib_files].values
-        @cookbook[cookbook].resource_files = cookbook_settings[cookbook][:resource_files].values
-        @cookbook[cookbook].provider_files = cookbook_settings[cookbook][:provider_files].values
-        @metadata[cookbook] = Chef::Cookbook::Metadata.new(@cookbook[cookbook])
-        cookbook_settings[cookbook][:metadata_files].each do |meta_json|
-          @metadata[cookbook].from_json(IO.read(meta_json))
+        @cookbook[cookbook] ||= Mash.new
+        @metadata[cookbook] ||= Mash.new
+        cookbook_settings[cookbook].each_key do |version|
+          @cookbook[cookbook][version] = Chef::Cookbook.new(cookbook)
+          @cookbook[cookbook][version].attribute_files = cookbook_settings[cookbook][version][:attribute_files].values
+          @cookbook[cookbook][version].definition_files = cookbook_settings[cookbook][version][:definition_files].values
+          @cookbook[cookbook][version].recipe_files = cookbook_settings[cookbook][version][:recipe_files].values
+          @cookbook[cookbook][version].template_files = cookbook_settings[cookbook][version][:template_files].values
+          @cookbook[cookbook][version].remote_files = cookbook_settings[cookbook][version][:remote_files].values
+          @cookbook[cookbook][version].lib_files = cookbook_settings[cookbook][version][:lib_files].values
+          @cookbook[cookbook][version].resource_files = cookbook_settings[cookbook][version][:resource_files].values
+          @cookbook[cookbook][version].provider_files = cookbook_settings[cookbook][version][:provider_files].values
+          @metadata[cookbook][version] = Chef::Cookbook::Metadata.new(@cookbook[cookbook][version])
+          cookbook_settings[cookbook][version][:metadata_files].each do |meta_json|
+            @metadata[cookbook][version].from_json(IO.read(meta_json))
+          end
         end
       end
     end
     
     def [](cookbook)
+      # if we just request a cookbook without a version, return the latest one
       if @cookbook.has_key?(cookbook.to_sym)
-        @cookbook[cookbook.to_sym]
+        @cookbook[cookbook.to_sym][versions(cookbook).last]
       else
         raise ArgumentError, "Cannot find a cookbook named #{cookbook.to_s}; did you forget to add metadata to a cookbook? (http://wiki.opscode.com/display/chef/Metadata)"
       end
@@ -129,8 +104,12 @@ class Chef
     
     def each
       @cookbook.keys.sort { |a,b| a.to_s <=> b.to_s }.each do |cname|
-        yield @cookbook[cname]
+        yield @cookbook[cname][versions(cname).last]
       end
+    end
+
+    def versions(cookbook)
+      @cookbook[cookbook.to_sym].keys.sort { |a,b| Chef::Cookbook::Metadata::Version.new(a) <=> Chef::Cookbook::Metadata::Version.new(b) }
     end
 
     private
@@ -153,10 +132,12 @@ class Chef
                                   :remote_files, :lib_files, :resource_files, :provider_files]
         
         @ignore_regexes.each do |cookbook_name, regexes|
-          regexes.each do |regex|
-            settings = cookbook_settings[cookbook_name]
-            file_types_to_inspect.each do |file_type|
-              settings[file_type].delete_if { |uniqname, fullpath| fullpath.match(regex) }
+          cookbook_settings[cookbook_name].each_key do |version|
+            regexes.each do |regex|
+              settings = cookbook_settings[cookbook_name][version]
+              file_types_to_inspect.each do |file_type|
+                settings[file_type].delete_if { |uniqname, fullpath| fullpath.match(regex) }
+              end
             end
           end
         end
@@ -176,5 +157,71 @@ class Chef
         end
       end
       
+      def process_cb(path, cookbook_name, version=nil)
+        settings = { 
+          :attribute_files  => Hash.new,
+          :definition_files => Hash.new,
+          :recipe_files     => Hash.new,
+          :template_files   => Hash.new,
+          :remote_files     => Hash.new,
+          :lib_files        => Hash.new,
+          :resource_files   => Hash.new,
+          :provider_files   => Hash.new,
+          :metadata_files   => Array.new
+        }
+
+        ignore_regexes = load_ignore_file(File.join(path, "ignore"))
+        @ignore_regexes[cookbook_name].concat(ignore_regexes)
+
+        load_files_unless_basename(
+          File.join(path, "attributes", "*.rb"), 
+          settings[:attribute_files]
+        )
+        load_files_unless_basename(
+          File.join(path, "definitions", "*.rb"), 
+          settings[:definition_files]
+        )
+        load_files_unless_basename(
+          File.join(path, "recipes", "*.rb"), 
+          settings[:recipe_files]
+        )
+        load_files_unless_basename(
+          File.join(path, "libraries", "*.rb"),               
+          settings[:lib_files]
+        )
+        load_cascading_files(
+          "*.erb",
+          File.join(path, "templates"),
+          settings[:template_files]
+        )
+        load_cascading_files(
+          "*",
+          File.join(path, "files"),
+          settings[:remote_files]
+        )
+        load_cascading_files(
+          "*.rb",
+          File.join(path, "resources"),
+          settings[:resource_files]
+        )
+        load_cascading_files(
+          "*.rb",
+          File.join(path, "providers"),
+          settings[:provider_files]
+        )
+
+        if File.exists?(File.join(path, "metadata.json"))
+          settings[:metadata_files] << File.join(path, "metadata.json")
+          unless version
+            md = Chef::Cookbook::Metadata.from_json(IO.read(File.join(path, "metadata.json")))
+            version = md.version
+          end
+        else
+          raise RuntimeError, "Can't find metadata for #{cookbook_name.to_s}, did you forget to add metadata to a cookbook? (http://wiki.opscode.com/display/chef/Metadata)"
+        end
+        return [version, settings]
+      end
+
+
   end
 end
