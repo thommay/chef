@@ -149,8 +149,8 @@ describe Chef::CookbookLoader do
     end
 
     it "should load the metadata for the cookbook" do
-      @cl.metadata[:openldap]["0.0.1"].name.should == "openldap"
-      @cl.metadata[:openldap]["0.0.1"].should be_a_kind_of(Chef::Cookbook::Metadata)
+      @cl.metadata(:openldap).name.should == "openldap"
+      @cl.metadata(:openldap).should be_a_kind_of(Chef::Cookbook::Metadata)
     end
 
   end

@@ -26,13 +26,13 @@ require 'chef/mixin/deep_merge'
 class Chef
   class CookbookLoader
     
-    attr_accessor :cookbook, :metadata
+    attr_accessor :cookbook
     
     include Enumerable
     
     def initialize()
+      @cookbooks = Array.new
       @cookbook = Hash.new
-      @metadata = Hash.new
       @ignore_regexes = Hash.new { |hsh, key| hsh[key] = Array.new }
       load_cookbooks
     end
@@ -74,21 +74,22 @@ class Chef
       
       cookbook_settings.each_key do |cookbook|
         @cookbook[cookbook] ||= Mash.new
-        @metadata[cookbook] ||= Mash.new
         cookbook_settings[cookbook].each_key do |version|
-          @cookbook[cookbook][version] = Chef::Cookbook.new(cookbook)
-          @cookbook[cookbook][version].attribute_files = cookbook_settings[cookbook][version][:attribute_files].values
-          @cookbook[cookbook][version].definition_files = cookbook_settings[cookbook][version][:definition_files].values
-          @cookbook[cookbook][version].recipe_files = cookbook_settings[cookbook][version][:recipe_files].values
-          @cookbook[cookbook][version].template_files = cookbook_settings[cookbook][version][:template_files].values
-          @cookbook[cookbook][version].remote_files = cookbook_settings[cookbook][version][:remote_files].values
-          @cookbook[cookbook][version].lib_files = cookbook_settings[cookbook][version][:lib_files].values
-          @cookbook[cookbook][version].resource_files = cookbook_settings[cookbook][version][:resource_files].values
-          @cookbook[cookbook][version].provider_files = cookbook_settings[cookbook][version][:provider_files].values
-          @metadata[cookbook][version] = Chef::Cookbook::Metadata.new(@cookbook[cookbook][version])
+          cb = Chef::Cookbook.new(cookbook)
+          cb.attribute_files = cookbook_settings[cookbook][version][:attribute_files].values
+          cb.definition_files = cookbook_settings[cookbook][version][:definition_files].values
+          cb.recipe_files = cookbook_settings[cookbook][version][:recipe_files].values
+          cb.template_files = cookbook_settings[cookbook][version][:template_files].values
+          cb.remote_files = cookbook_settings[cookbook][version][:remote_files].values
+          cb.lib_files = cookbook_settings[cookbook][version][:lib_files].values
+          cb.resource_files = cookbook_settings[cookbook][version][:resource_files].values
+          cb.provider_files = cookbook_settings[cookbook][version][:provider_files].values
+          md = Chef::Cookbook::Metadata.new(cb)
           cookbook_settings[cookbook][version][:metadata_files].each do |meta_json|
-            @metadata[cookbook][version].from_json(IO.read(meta_json))
+            md.from_json(IO.read(meta_json))
           end
+          @cookbooks << [cb,md]
+          @cookbook[cookbook][version] = @cookbooks.length - 1
         end
       end
     end
@@ -96,15 +97,27 @@ class Chef
     def [](cookbook)
       # if we just request a cookbook without a version, return the latest one
       if @cookbook.has_key?(cookbook.to_sym)
-        @cookbook[cookbook.to_sym][versions(cookbook).last]
+        pos = @cookbook[cookbook.to_sym][versions(cookbook).last]
+        @cookbooks[pos][0]
       else
         raise ArgumentError, "Cannot find a cookbook named #{cookbook.to_s}; did you forget to add metadata to a cookbook? (http://wiki.opscode.com/display/chef/Metadata)"
       end
     end
     
+    def metadata(cookbook, version=nil)
+      if version
+        @cookbooks[@cookbook[cookbook][version]][1]
+      else
+        pos = @cookbook[cookbook.to_sym][versions(cookbook).last]
+        @cookbooks[pos][1]
+      end
+    end
+
+
     def each
       @cookbook.keys.sort { |a,b| a.to_s <=> b.to_s }.each do |cname|
-        yield @cookbook[cname][versions(cname).last]
+        pos = @cookbook[cname][versions(cname).last]
+        yield @cookbooks[pos][0]
       end
     end
 
