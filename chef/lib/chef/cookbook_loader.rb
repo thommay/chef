@@ -121,6 +121,23 @@ class Chef
       end
     end
 
+    def load(cookbook, version=nil)
+      if @cookbook.has_key?(cookbook.to_sym)
+        if version
+          if @cookbook[cookbook.to_sym].has_key?(version)
+            @cookbooks[@cookbook[cookbook.to_sym][version]]
+          else
+            raise ArgumentError, "Cannont find the requested version #{version} of cookbook #{cookbook}"
+          end
+        else
+          pos = @cookbook[cookbook.to_sym][versions(cookbook).last]
+          @cookbooks[pos]
+        end
+      else
+        raise ArgumentError, "Cannot find a cookbook named #{cookbook.to_s}; did you forget to add metadata to a cookbook? (http://wiki.opscode.com/display/chef/Metadata)"
+      end
+    end
+
     def versions(cookbook)
       @cookbook[cookbook.to_sym].keys.sort { |a,b| Chef::Cookbook::Metadata::Version.new(a) <=> Chef::Cookbook::Metadata::Version.new(b) }
     end

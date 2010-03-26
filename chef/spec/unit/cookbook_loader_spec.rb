@@ -173,4 +173,29 @@ describe Chef::CookbookLoader do
     end
   end
 
+   describe "load" do
+    before(:each) do
+      Chef::Config.cookbook_path [ 
+        File.join(File.dirname(__FILE__), "..", "data", "grill"),
+        File.join(File.dirname(__FILE__), "..", "data", "cookbooks")
+      ]
+      @cl = Chef::CookbookLoader.new()
+    end
+
+    it "should return both a cookbook and its metadata" do
+      (cb, md) = @cl.load(:openldap)
+      cb.should be_a_kind_of(Chef::Cookbook)
+      md.should be_a_kind_of(Chef::Cookbook::Metadata)
+    end
+
+    it "should return the specified version" do
+      @cl.load(:openldap,"0.0.1")[1].version.should eql("0.0.1")
+    end
+
+    it "should return the newest version if no version is specified" do
+      @cl.load(:openldap)[1].version.should eql("0.2.1")
+    end
+
+   end
+ 
 end
