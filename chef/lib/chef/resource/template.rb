@@ -28,7 +28,6 @@ class Chef
         @action = "create"
         @source = "#{::File.basename(name)}.erb"
         @cookbook = nil
-        @local = false
         @variables = Hash.new
       end
 
@@ -53,14 +52,6 @@ class Chef
           :cookbook,
           args,
           :kind_of => [ String ]
-        )
-      end
-
-      def local(args=nil)
-        set_or_return(
-          :local,
-          args,
-          :kind_of => [ TrueClass, FalseClass ]
         )
       end
 
