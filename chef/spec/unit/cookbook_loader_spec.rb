@@ -155,4 +155,22 @@ describe Chef::CookbookLoader do
 
   end
   
+  describe "versions" do
+    before(:each) do
+      Chef::Config.cookbook_path [ 
+        File.join(File.dirname(__FILE__), "..", "data", "grill"),
+        File.join(File.dirname(__FILE__), "..", "data", "cookbooks")
+      ]
+      @cl = Chef::CookbookLoader.new()
+    end
+
+    it "should return an array of available versions" do
+      @cl.versions(:apache2).should eql(["0.1.0"])
+    end
+
+    it "should sort the array" do
+      @cl.versions(:openldap).should eql(["0.0.1","0.2.1"])
+    end
+  end
+
 end
