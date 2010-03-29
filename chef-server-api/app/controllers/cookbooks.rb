@@ -42,20 +42,20 @@ class ChefServerApi::Cookbooks < ChefServerApi::Application
   def show
     cl = Chef::CookbookLoader.new
     begin
-      cookbook = cl[params[:id]]
+      cookbook, metadata = cl.load(params[:id], params[:cbver])
     rescue ArgumentError => e
       raise NotFound, "Cannot find a cookbook named #{params[:id]}"
     end
     results = load_cookbook_files(cookbook)
     results[:name] = cookbook.name.to_s
-    results[:metadata] = cl.metadata[cookbook.name.to_sym]
+    results[:metadata] = metadata
     display results 
   end
  
   def show_segment
     cl = Chef::CookbookLoader.new
     begin
-      cookbook = cl[params[:cookbook_id]]
+      cookbook, metadata = cl.load(params[:cookbook_id], params[:cbver])
     rescue ArgumentError => e
       raise NotFound, "Cannot find a cookbook named #{params[:cookbook_id]}" 
     end
