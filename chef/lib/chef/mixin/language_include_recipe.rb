@@ -34,10 +34,10 @@ class Chef
 
           rmatch = recipe.match(/(.+?)::(.+)/)
           if rmatch
-            cookbook = @cookbook_loader[rmatch[1]]
+            cookbook, metadata = @cookbook_loader.load(rmatch[1], version)
             cookbook.load_recipe(rmatch[2], @node, @collection, @definitions, @cookbook_loader)
           else
-            cookbook = @cookbook_loader[recipe]
+            cookbook, metadata = @cookbook_loader.load(recipe, version)
             cookbook.load_recipe("default", @node, @collection, @definitions, @cookbook_loader)
           end
         end

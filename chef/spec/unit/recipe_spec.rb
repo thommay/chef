@@ -179,6 +179,16 @@ describe Chef::Recipe do
       res.pretty_kitty.should eql(true)
     end
     
+    it "should load a specific version of a recipe" do
+      Chef::Config.cookbook_path File.join(File.dirname(__FILE__), "..", "data", "cookbooks")
+      @recipe.cookbook_loader.load_cookbooks
+      @recipe.include_recipe ["openldap", "0.0.1"]
+      res = @recipe.resources(:cat => "blanket")
+      res.name.should eql("blanket")
+      res.pretty_kitty.should eql(true)
+    end
+    
+
     it "should store that it has seen a recipe in node.run_state[:seen_recipes]" do
       Chef::Config.cookbook_path File.join(File.dirname(__FILE__), "..", "data", "cookbooks")
       @recipe.cookbook_loader.load_cookbooks
