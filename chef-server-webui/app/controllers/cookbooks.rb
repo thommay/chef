@@ -38,7 +38,11 @@ class ChefServerWebui::Cookbooks < ChefServerWebui::Application
 
   def show
     begin
-      @cookbook = Chef::REST.new(Chef::Config[:chef_server_url]).get_rest("cookbooks/#{params[:id]}")
+      if params[:cbver]
+        @cookbook = Chef::REST.new(Chef::Config[:chef_server_url]).get_rest("cookbooks/#{params[:id]}?cbver=#{params[:cbver]}")
+      else
+        @cookbook = Chef::REST.new(Chef::Config[:chef_server_url]).get_rest("cookbooks/#{params[:id]}")
+      end
       raise NotFound unless @cookbook
       display @cookbook
     rescue => e
