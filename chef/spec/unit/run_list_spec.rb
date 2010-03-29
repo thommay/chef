@@ -33,7 +33,7 @@ describe Chef::RunList do
     it "should add a recipe to the run list and recipe list with the fully qualified name" do
       @run_list << 'recipe[needy]'
       @run_list.run_list.include?('recipe[needy]').should == true
-      @run_list.recipes.include?('needy').should == true
+      @run_list.recipes.include?(['needy',nil]).should == true
     end
 
     it "should add a role to the run list and role list with the fully qualified name" do
@@ -45,7 +45,7 @@ describe Chef::RunList do
     it "should accept recipes that are unqualified" do
       @run_list << "needy"
       @run_list.run_list.include?('recipe[needy]').should == true
-      @run_list.recipes.include?('needy').should == true
+      @run_list.recipes.include?(['needy',nil]).should == true
     end
 
     it "should not allow duplicates" do
@@ -54,6 +54,22 @@ describe Chef::RunList do
       @run_list.run_list.length.should == 1
       @run_list.recipes.length.should == 1
     end
+
+    it "should allow two versions of a recipe" do
+      @run_list << "recipe[needy, 0.2.0]"
+      @run_list << "recipe[needy, 0.1.0]"
+      @run_list.run_list.length.should == 2
+      @run_list.recipes.length.should == 2
+    end
+
+    it "should not allow duplicate versions of a recipe" do
+      @run_list << "recipe[needy, 0.2.0]"
+      @run_list << "recipe[needy, 0.2.0]"
+      @run_list.run_list.length.should == 1
+      @run_list.recipes.length.should == 1
+    end
+
+
   end
 
   describe "==" do
@@ -141,7 +157,7 @@ describe Chef::RunList do
     before(:each) do
       @role = Chef::Role.new
       @role.name "stubby"
-      @role.run_list "one", "two"
+      @role.run_list "one", "recipe[two,0.2.0]"
       @role.default_attributes :one => :two
       @role.override_attributes :three => :four
 
@@ -182,8 +198,8 @@ describe Chef::RunList do
 
     it "should return the list of expanded recipes" do
       recipes, default, override = @run_list.expand
-      recipes[0].should == "one"
-      recipes[1].should == "two"
+      recipes[0][0].should == "one"
+      recipes[1].should == ["two","0.2.0"]
     end
 
     it "should return the list of default attributes" do
@@ -206,7 +222,7 @@ describe Chef::RunList do
       Chef::Role.stub!(:from_disk).with("dog").and_return(dog)
 
       recipes, default, override = @run_list.expand('disk')
-      recipes[2].should == "three"
+      recipes[2][0].should == "three"
       default[:seven].should == :nine
     end
 
@@ -220,8 +236,8 @@ describe Chef::RunList do
       Chef::Role.should_receive(:from_disk).with("dog").once.and_return(dog)
 
       recipes, default, override = @run_list.expand('disk')
-      recipes[2].should == "three"
-      recipes[3].should == "kitty"
+      recipes[2][0].should == "three"
+      recipes[3][0].should == "kitty"
       default[:seven].should == :nine
     end
 

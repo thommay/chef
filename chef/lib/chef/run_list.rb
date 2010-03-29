@@ -31,10 +31,10 @@ class Chef
     end
 
     def <<(item)
-      type, entry, fentry = parse_entry(item)
+      type, entry, fentry, version = parse_entry(item)
       case type
       when 'recipe'
-        @recipes << entry unless @recipes.include?(entry)
+        @recipes << [entry, version] unless @recipes.include?([entry, version])
       when 'role'
         @roles << entry unless @roles.include?(entry)
       end
@@ -87,7 +87,7 @@ class Chef
     end
 
     def include?(item)
-      type, entry, fentry = parse_entry(item)
+      type, entry, fentry, version = parse_entry(item)
       @run_list.include?(fentry)
     end
 
@@ -106,10 +106,10 @@ class Chef
     end
 
     def remove(item)
-      type, entry, fentry = parse_entry(item)
+      type, entry, fentry, version = parse_entry(item)
       @run_list.delete_if { |i| i == fentry }
       if type == "recipe"
-        @recipes.delete_if { |i| i == entry }
+        @recipes.delete_if { |i| i == [entry, version] }
       elsif type == "role"
         @roles.delete_if { |i| i == entry }
       end
@@ -123,10 +123,10 @@ class Chef
       override_attrs = Mash.new
       
       @run_list.each do |entry|
-        type, name, fname = parse_entry(entry)
+        type, name, fname, version = parse_entry(entry)
         case type
         when 'recipe'
-          recipes << name unless recipes.include?(name)
+          recipes << [name, version] unless recipes.include?([name, version])
         when 'role'
           role = begin
                    next if @seen_roles.include?(name)
@@ -161,10 +161,12 @@ class Chef
 
     def parse_entry(entry)
       case entry 
+      when /^(.+)\[(.+),(.+)\]$/
+        [ $1, $2, entry, $3 ]
       when /^(.+)\[(.+)\]$/
-        [ $1, $2, entry ]
+        [ $1, $2, entry, nil ]
       else
-        [ 'recipe', entry, "recipe[#{entry}]" ]
+        [ 'recipe', entry, "recipe[#{entry}]", nil ]
       end
     end
 

@@ -23,7 +23,7 @@ class Chef
     module LanguageIncludeRecipe
 
       def include_recipe(*args)
-        args.flatten.each do |recipe|
+        args.each do |recipe,version|
           if @node.run_state[:seen_recipes].has_key?(recipe)
             Chef::Log.debug("I am not loading #{recipe}, because I have already seen it.")
             next

@@ -294,7 +294,7 @@ describe Chef::Node do
       h["one"]["two"].should == "seven"
       h["one"]["four"].should == "six"
       h["one"]["eight"].should == "nine"
-      h["recipe"].should be_include("stalinist")
+      h["recipe"].should be_include(["stalinist", nil])
       h["role"].should be_include("marxist")
       h["role"].should be_include("leninist")
       h["run_list"].should be_include("role[marxist]")
