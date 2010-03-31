@@ -30,6 +30,17 @@ class Chef
     
     include Enumerable
     
+    CMP = {
+      "<<" => lambda { |v, r| v < r },
+      "<=" => lambda { |v, r| v <= r },
+      "="  => lambda { |v, r| v == r },
+      ">=" => lambda { |v, r| v >= r },
+      ">>" => lambda { |v, r| v > r }
+    }
+
+    qcmp = CMP.keys.map { |k| Regexp.quote k }.join "|"
+    PATTERN = /\A\s*(#{qcmp})?\s*(#{Chef::Cookbook::Metadata::Version::PATTERN})\s*\z/
+
     def initialize()
       @cookbooks = Array.new
       @cookbook = Hash.new
@@ -129,13 +140,27 @@ class Chef
       end
     end
 
+    def satisfy(cookbook, req=nil)
+      if req.nil?
+        self.load(cookbook)
+      elsif req =~ PATTERN
+        comp = $1 || "="
+        ver = Chef::Cookbook::Metadata::Version.new $2
+        best = versions(cookbook).select { |v| CMP[comp].call Chef::Cookbook::Metadata::Version.new(v), ver}.last
+        raise ArgumentError, "Can't satisfy dependency #{req} for cookbook #{cookbook}" unless best
+        self.load(cookbook, best)
+      else
+        raise ArgumentError, "Unrecognized dependency specification"
+      end
+    end
+
     def load(cookbook, version=nil)
       if @cookbook.has_key?(cookbook.to_sym)
         if version
           if @cookbook[cookbook.to_sym].has_key?(version)
             @cookbooks[@cookbook[cookbook.to_sym][version]]
           else
-            raise ArgumentError, "Cannont find the requested version #{version} of cookbook #{cookbook}"
+            raise ArgumentError, "Cannot find the requested version #{version} of cookbook #{cookbook}"
           end
         else
           pos = @cookbook[cookbook.to_sym][versions(cookbook).last]

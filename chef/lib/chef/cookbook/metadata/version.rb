@@ -27,6 +27,8 @@ class Chef::Cookbook::Metadata
                   :minor,
                   :patch
 
+    PATTERN = '[0-9]+(\.[0-9]+)*'
+
     def initialize(str="")
       @major, @minor, @patch = _parse(str)
     end

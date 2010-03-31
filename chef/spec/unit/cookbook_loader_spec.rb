@@ -206,5 +206,42 @@ describe Chef::CookbookLoader do
     end
 
    end
+
+   describe "satisfy" do
+     before(:each) do
+      Chef::Config.cookbook_path [ 
+        File.join(File.dirname(__FILE__), "..", "data", "grill"),
+        File.join(File.dirname(__FILE__), "..", "data", "cookbooks")
+      ]
+      @cl = Chef::CookbookLoader.new()
+     end
+
+     it "should return the newest version of a cookbook if no dependency is supplied" do
+       @cl.satisfy(:openldap)[1].version.should eql("0.2.1")
+     end
+
+     it "should return the specified version of a cookbook if a bare version is supplied" do
+       @cl.satisfy(:openldap,"0.0.1")[1].version.should eql("0.0.1")
+     end
+
+     { "= 0.2.1" => "0.2.1",
+       "<< 0.2.1" => "0.0.1",
+       "<= 0.2.1" => "0.2.1",
+       ">> 0.0.1" => "0.2.1",
+       ">= 0.0.1" => "0.2.1"}.each_pair do |pat, req|
+       it "should return the specified version (#{req}) of a cookbook if #{pat} is supplied" do
+         @cl.satisfy(:openldap,pat)[1].version.should eql(req)
+       end
+     end
+
+     it "should raise an ArgumentError if the dependency cannot be satisfied" do
+       lambda { @cl.satisfy(:openldap, ">> 0.3.2") }.should raise_error(ArgumentError)
+     end
+
+     it "should raise an ArgumentError if the comparison is not recognised" do
+      lambda { @cl.satisfy(:monkeypoop, "<> 0.2.1") }.should raise_error(ArgumentError)
+     end
+
+   end
  
 end
