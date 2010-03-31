@@ -88,6 +88,15 @@ describe Chef::CookbookLoader do
       @cl.cookbook[:openldap].length.should eql(2)
     end
   
+    it "should load a cookbook without metadata in Solo mode" do
+      Chef::Config.solo true
+      Chef::Config.cookbook_path File.join(File.dirname(__FILE__), "..", "data", "solo")
+      @cl.load_cookbooks
+      @cl.detect { |cb| cb.name == :openldap }.should_not eql(nil)
+      @cl.detect { |cb| cb.name == :apache2 }.should_not eql(nil)
+      @cl.cookbook[:openldap].length.should eql(2)
+    end
+
     it "should allow you to override an attribute file via cookbook_path" do
       @cl[:openldap].attribute_files.detect { |f| 
         f =~ /cookbooks\/openldap\/attributes\/default.rb/

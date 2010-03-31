@@ -54,6 +54,14 @@ class Chef
             else
               cookbook_settings[cookbook_name][ver] = settings
             end
+          # Solo mode doesn't require metadata or versions
+          elsif Chef::Config[:solo] and File.directory?(File.join(cookbook, "recipes"))
+            (ver, settings) = process_cb(cookbook, cookbook_name, "0.0")
+            if cookbook_settings[cookbook_name].has_key?(ver)
+              cookbook_settings[cookbook_name][ver] = Chef::Mixin::DeepMerge.merge(cookbook_settings[cookbook_name][ver], settings)
+            else
+              cookbook_settings[cookbook_name][ver] = settings
+            end
           else
             # Otherwise, we've got a directory of versions of a specific cookbook. So we
             # need to read each one in turn.
@@ -247,7 +255,7 @@ class Chef
             version = md.version
           end
         else
-          raise RuntimeError, "Can't find metadata for #{cookbook_name.to_s}, did you forget to add metadata to a cookbook? (http://wiki.opscode.com/display/chef/Metadata)"
+          raise RuntimeError, "Can't find metadata for #{cookbook_name.to_s}, did you forget to add metadata to a cookbook? (http://wiki.opscode.com/display/chef/Metadata)" unless Chef::Config[:solo]
         end
         return [version, settings]
       end
