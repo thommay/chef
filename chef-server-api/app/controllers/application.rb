@@ -217,14 +217,14 @@ class ChefServerApi::Application < Merb::Controller
         file_specificity = nil
 
         if segment == :templates || segment == :files
-          mo = sf.match("cookbooks/#{cookbook.name}/([0-9\.]+)/#{segment}/(.+?)/(.+)")
+          mo = sf.match("cookbooks/#{cookbook.name}/(([0-9\.]+)/)?#{segment}/(.+?)/(.+)")
           unless mo
             Chef::Log.debug("Skipping file #{sf}, as it doesn't have a proper segment.")
             next
           end
-          cb_ver = mo[1]
-          specificity = mo[2]
-          file_name = mo[3]
+          cb_ver = mo[2]
+          specificity = mo[3]
+          file_name = mo[4]
           url_options = { :cookbook_id => cookbook.name.to_s, :segment => segment, :id => file_name, :cbver => cb_ver }
           
           case specificity
@@ -241,9 +241,9 @@ class ChefServerApi::Application < Merb::Controller
           file_specificity = specificity
           file_url = absolute_slice_url(:cookbook_segment, url_options)
         else
-          mo = sf.match("cookbooks/#{cookbook.name}/([0-9\.]+)/#{segment}/(.+)")
-          cb_ver = mo[1]
-          file_name = mo[2]
+          mo = sf.match("cookbooks/#{cookbook.name}/(([0-9\.]+)/)?#{segment}/(.+)")
+          cb_ver = mo[2]
+          file_name = mo[3]
           url_options = { :cookbook_id => cookbook.name.to_s, :segment => segment, :id => file_name, :cbver => cb_ver }
           file_url = absolute_slice_url(:cookbook_segment, url_options)
         end
