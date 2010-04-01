@@ -179,21 +179,23 @@ class ChefServerApi::Application < Merb::Controller
     rescue Net::HTTPServerException
       recipes = []
     end
-    recipes.each do |recipe|
-      valid_cookbooks = expand_cookbook_deps(valid_cookbooks, cl, recipe)
+    recipes.each do |recipe,version|
+      valid_cookbooks = expand_cookbook_deps(valid_cookbooks, cl, recipe, version)
     end
     valid_cookbooks
   end
 
-  def expand_cookbook_deps(valid_cookbooks, cl, recipe)
+  def expand_cookbook_deps(valid_cookbooks, cl, recipe, version)
     cookbook = recipe
     if recipe =~ /^(.+)::/
       cookbook = $1
     end
-    Chef::Log.debug("Node requires #{cookbook}")
-    valid_cookbooks[cookbook] = true 
-    cl.metadata[cookbook.to_sym].dependencies.each do |dep, versions|
-      expand_cookbook_deps(valid_cookbooks, cl, dep) unless valid_cookbooks[dep]
+    Chef::Log.debug("Node requires #{cookbook} at #{version}")
+    valid_cookbooks[cookbook]  ||= Array.new
+    valid_cookbooks[cookbook] << version
+    cb, md = cl.satisfy(cookbook, version)
+    md.dependencies.each do |dep, versions|
+      expand_cookbook_deps(valid_cookbooks, cl, dep, versions) 
     end
     valid_cookbooks
   end
@@ -263,11 +265,14 @@ class ChefServerApi::Application < Merb::Controller
     cl = Chef::CookbookLoader.new
     valid_cookbooks = node_name ? specific_cookbooks(node_name, cl) : {} 
     cookbook_list = Hash.new
-    cl.each do |cookbook|
-      if node_name
-        next unless valid_cookbooks[cookbook.name.to_s]
+    unless valid_cookbooks.empty?
+      valid_cookbooks.each_pair do |name, versions|
+        cookbook_list[name.to_s] = load_cookbook_files(cl.satisfy_all(name, versions)[0])
       end
-      cookbook_list[cookbook.name.to_s] = load_cookbook_files(cookbook) 
+    else
+      cl.each do |cookbook|
+        cookbook_list[cookbook.name.to_s] = load_cookbook_files(cookbook) 
+      end
     end
     cookbook_list
   end
