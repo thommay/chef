@@ -140,19 +140,33 @@ class Chef
       end
     end
 
+    def satisfy_all(cookbook, reqs)
+      vers = Array.new
+      reqs.each do |pat|
+        v = satisfy(cookbook, pat)
+        raise ArgumentError, "Can't satisfy dependency #{pat} for cookbook #{cookbook}" if v.empty?
+        if vers.empty?
+          vers = v
+        else
+          vers = vers & v
+          raise ArgumentError, "Conflicting dependencies for #{cookbook}" if vers.empty?
+        end
+      end
+      self.load(cookbook, vers.last)
+    end
+
     def satisfy(cookbook, req=nil)
       if req.nil?
-        self.load(cookbook)
+        versions(cookbook)
       elsif req =~ PATTERN
         comp = $1 || "="
         ver = Chef::Cookbook::Metadata::Version.new $2
-        best = versions(cookbook).select { |v| CMP[comp].call Chef::Cookbook::Metadata::Version.new(v), ver}.last
-        raise ArgumentError, "Can't satisfy dependency #{req} for cookbook #{cookbook}" unless best
-        self.load(cookbook, best)
+        versions(cookbook).select { |v| CMP[comp].call Chef::Cookbook::Metadata::Version.new(v), ver}
       else
         raise ArgumentError, "Unrecognized dependency specification"
       end
     end
+
 
     def load(cookbook, version=nil)
       if @cookbook.has_key?(cookbook.to_sym)
@@ -282,7 +296,6 @@ class Chef
         end
         return [version || "0.0.0", settings]
       end
-
 
   end
 end

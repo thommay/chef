@@ -216,26 +216,26 @@ describe Chef::CookbookLoader do
       @cl = Chef::CookbookLoader.new()
      end
 
-     it "should return the newest version of a cookbook if no dependency is supplied" do
-       @cl.satisfy(:openldap)[1].version.should eql("0.2.1")
+     it "should return all versions of a cookbook if no dependency is supplied" do
+       @cl.satisfy(:openldap).should eql(["0.0.1","0.2.1"])
      end
 
      it "should return the specified version of a cookbook if a bare version is supplied" do
-       @cl.satisfy(:openldap,"0.0.1")[1].version.should eql("0.0.1")
+       @cl.satisfy(:openldap,"0.0.1").should eql(["0.0.1"])
      end
 
-     { "= 0.2.1" => "0.2.1",
-       "<< 0.2.1" => "0.0.1",
-       "<= 0.2.1" => "0.2.1",
-       ">> 0.0.1" => "0.2.1",
-       ">= 0.0.1" => "0.2.1"}.each_pair do |pat, req|
+     { "= 0.2.1" => ["0.2.1"],
+       "<< 0.2.1" => ["0.0.1"],
+       "<= 0.2.1" => ["0.0.1","0.2.1"],
+       ">> 0.0.1" => ["0.2.1"],
+       ">= 0.0.1" => ["0.0.1","0.2.1"]}.each_pair do |pat, req|
        it "should return the specified version (#{req}) of a cookbook if #{pat} is supplied" do
-         @cl.satisfy(:openldap,pat)[1].version.should eql(req)
+         @cl.satisfy(:openldap,pat).should eql(req)
        end
      end
 
-     it "should raise an ArgumentError if the dependency cannot be satisfied" do
-       lambda { @cl.satisfy(:openldap, ">> 0.3.2") }.should raise_error(ArgumentError)
+     it "should return an empty array if the dependency cannot be satisfied" do
+       @cl.satisfy(:openldap, ">> 0.3.2").should eql([])
      end
 
      it "should raise an ArgumentError if the comparison is not recognised" do
@@ -244,4 +244,27 @@ describe Chef::CookbookLoader do
 
    end
  
+   describe "satisfy_all" do
+     before(:each) do
+      Chef::Config.cookbook_path [ 
+        File.join(File.dirname(__FILE__), "..", "data", "grill"),
+        File.join(File.dirname(__FILE__), "..", "data", "cookbooks")
+      ]
+      @cl = Chef::CookbookLoader.new()
+     end
+
+     it "should return a single cookbook when given an array of requirements" do
+       @cl.satisfy_all(:openldap,["0.2.1", ">= 0.0.1"])[1].version.should eql("0.2.1")
+     end
+
+     it "should raise an ArgumentError if no cookbooks are found" do
+       lambda { @cl.satisfy_all(:openldap, ">> 0.2.1") }.should raise_error(ArgumentError)
+     end
+
+     it "should raise an ArgumentError if the requirements can't be satisfied" do
+       lambda { @cl.satisfy_all(:openldap, ["<< 0.2.1", "0.2.1"]) }.should raise_error(ArgumentError)
+     end
+
+   end
+
 end
