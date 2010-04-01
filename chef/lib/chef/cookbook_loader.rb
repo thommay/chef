@@ -279,10 +279,8 @@ class Chef
             md = Chef::Cookbook::Metadata.from_json(IO.read(File.join(path, "metadata.json")))
             version = md.version
           end
-        else
-          raise RuntimeError, "Can't find metadata for #{cookbook_name.to_s}, did you forget to add metadata to a cookbook? (http://wiki.opscode.com/display/chef/Metadata)" unless Chef::Config[:solo]
         end
-        return [version, settings]
+        return [version || "0.0.0", settings]
       end
 
 
