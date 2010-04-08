@@ -140,8 +140,13 @@ class Chef
       end
     end
 
-    def satisfy_all(cookbook, reqs)
+    def satisfy_all(cookbook, reqs=[])
       vers = Array.new
+
+      if reqs.nil? or reqs.empty?
+        return self.load(cookbook, satisfy(cookbook).last)
+      end
+
       reqs.each do |pat|
         v = satisfy(cookbook, pat)
         raise ArgumentError, "Can't satisfy dependency #{pat} for cookbook #{cookbook}" if v.empty?

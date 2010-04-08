@@ -193,7 +193,7 @@ class ChefServerApi::Application < Merb::Controller
     Chef::Log.debug("Node requires #{cookbook} at #{version}")
     valid_cookbooks[cookbook]  ||= Array.new
     valid_cookbooks[cookbook] << version
-    cb, md = cl.satisfy(cookbook, version)
+    cb, md = cl.satisfy_all(cookbook, version)
     md.dependencies.each do |dep, versions|
       expand_cookbook_deps(valid_cookbooks, cl, dep, versions) 
     end
