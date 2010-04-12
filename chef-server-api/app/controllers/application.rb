@@ -209,7 +209,8 @@ class ChefServerApi::Application < Merb::Controller
       :files => Array.new,
       :templates => Array.new,
       :resources => Array.new,
-      :providers => Array.new
+      :providers => Array.new,
+      :version => cookbook.version
     }
     [ :resources, :providers, :recipes, :definitions, :libraries, :attributes, :files, :templates ].each do |segment|
       segment_files(segment, cookbook).each do |sf|

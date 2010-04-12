@@ -21,6 +21,7 @@ require 'chef/config'
 require 'chef/mixin/params_validate'
 require 'chef/mixin/generate_url'
 require 'chef/mixin/checksum'
+require 'chef/cookbook/metadata/version'
 require 'chef/log'
 require 'chef/rest'
 require 'chef/platform'
@@ -200,6 +201,7 @@ class Chef
       Chef::Log.debug("Synchronizing cookbook #{cookbook_name}")
 
       file_canonical = Hash.new
+      version = parts["version"] || nil
 
       [ "recipes", "attributes", "definitions", "libraries", "resources", "providers" ].each do |segment|
         remote_list = parts.has_key?(segment) ? parts[segment] : []
@@ -211,7 +213,7 @@ class Chef
         # just laying about.
         
         remote_list.each do |rf|
-          cache_file = File.join("cookbooks", cookbook_name, segment, rf['name'])
+          cache_file = File.join("cookbooks", cookbook_name, version, segment, rf['name'])
           file_canonical[cache_file] = true
 
           # For back-compat between older clients and new chef servers
@@ -223,12 +225,15 @@ class Chef
           end
 
           if current_checksum != rf['checksum']
+            args = {}
+            args["checksum"] = current_checksum if current_checksum
+            args["cbver"] = version if version
             rf_url = generate_cookbook_url(
               rf['name'], 
               cookbook_name, 
               segment, 
               @node, 
-              current_checksum ? { 'checksum' => current_checksum } : nil
+              args
             )
 
             changed = true
@@ -253,7 +258,7 @@ class Chef
       end
 
       Chef::FileCache.list.each do |cache_file|
-        if cache_file =~ /^cookbooks\/#{cookbook_name}\/(recipes|attributes|definitions|libraries|resources|providers)\//
+        if cache_file =~ /^cookbooks\/#{cookbook_name}\/(#{Chef::Cookbook::Metadata::Version::PATTERN}\/)?(recipes|attributes|definitions|libraries|resources|providers)\//
           unless file_canonical[cache_file]
             Chef::Log.info("Removing #{cache_file} from the cache; it is no longer on the server.")
             Chef::FileCache.delete(cache_file)
