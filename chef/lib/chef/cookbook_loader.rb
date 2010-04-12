@@ -161,9 +161,10 @@ class Chef
     end
 
     def satisfy(cookbook, req=nil)
-      if req.nil?
+      r = req.to_s
+      if r.nil? 
         versions(cookbook)
-      elsif req =~ PATTERN
+      elsif r =~ PATTERN
         comp = $1 || "="
         ver = Chef::Cookbook::Metadata::Version.new $2
         versions(cookbook).select { |v| CMP[comp].call Chef::Cookbook::Metadata::Version.new(v), ver}
