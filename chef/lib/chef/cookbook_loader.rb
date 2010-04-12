@@ -65,8 +65,7 @@ class Chef
             else
               cookbook_settings[cookbook_name][ver] = settings
             end
-          # Solo mode doesn't require metadata or versions
-          elsif Chef::Config[:solo] and File.directory?(File.join(cookbook, "recipes"))
+          elsif File.directory?(File.join(cookbook, "recipes"))
             (ver, settings) = process_cb(cookbook, cookbook_name, "0.0")
             if cookbook_settings[cookbook_name].has_key?(ver)
               cookbook_settings[cookbook_name][ver] = Chef::Mixin::DeepMerge.merge(cookbook_settings[cookbook_name][ver], settings)
