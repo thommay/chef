@@ -261,13 +261,15 @@ class ChefServerWebui::Application < Merb::Controller
     cookbooks = r.get_rest("cookbooks")
     cookbooks.keys.sort.each do |key|
       cb = r.get_rest(cookbooks[key])
-      cb["recipes"].each do |recipe|
-        recipe["name"] =~ /(.+)\.rb/
-        r_name = $1;
-        if r_name == "default" 
-          result << key
-        else
-          result << "#{key}::#{r_name}"
+      cb.keys.reject{ |k| k == "name" }.sort.each do |v|
+        cb[v]["recipes"].each do |recipe|
+          recipe["name"] =~ /(.+)\.rb/
+            r_name = $1;
+          if r_name == "default" 
+            result << "#{key} #{v}"
+          else
+            result << "#{key}::#{r_name} #{v}"
+          end
         end
       end
     end
