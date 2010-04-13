@@ -15,16 +15,18 @@
               %tr
                 %th.first Position
                 %th Name
+                %th Version
                 %th.last Type
                 - if @role.run_list.empty?
                   %tr
                     %td{:colspan => 2} This role does not include any roles or recipes.
                 - else
                   -@role.run_list.each_index do |i|
-                    - type, name, fname = @role.run_list.parse_entry(@role.run_list[i])
+                    - type, name, fname, version = @role.run_list.parse_entry(@role.run_list[i])
                     %tr
                       %td.position= i
                       %td= name 
+                      %td= version 
                       %td= type 
           .left.accordion
             %h3.head= link_to("Recipes", "#")

@@ -12,16 +12,18 @@
               %tr
                 %th.first Position
                 %th Name
+                %th Version
                 %th.last Type
                 - if @node.run_list.empty?
                   %tr
                     %td{:colspan => 2} This node has no roles or recipes applied.
                 - else
                   -@node.run_list.each_index do |i|
-                    - type, name, fname = @node.run_list.parse_entry(@node.run_list[i])
+                    - type, name, fname, version = @node.run_list.parse_entry(@node.run_list[i])
                     %tr
                       %td.position= i
                       %td= name 
+                      %td= version
                       %td= type 
           .left.accordion
             %h3.head= link_to("Recipes", "#")
