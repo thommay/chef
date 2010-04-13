@@ -41,17 +41,21 @@ class ChefServerApi::Cookbooks < ChefServerApi::Application
 
   def show
     cl = Chef::CookbookLoader.new
+    vers = Mash.new
     begin
-      cookbook, metadata = cl.load(params[:id], params[:cbver])
+      cl.versions(params[:id]).each do |v|
+        Chef::Log.debug("Loading version #{v} of cookbook #{params[:id]})")
+        cookbook, metadata = cl.load(params[:id], v)
+        vers[v] = load_cookbook_files(cookbook)
+        vers[:name] = cookbook.name.to_s
+        vers[v][:metadata] = metadata
+      end
     rescue ArgumentError => e
       raise NotFound, "Cannot find a cookbook named #{params[:id]}"
     end
-    results = load_cookbook_files(cookbook)
-    results[:name] = cookbook.name.to_s
-    results[:metadata] = metadata
-    display results 
+    display vers
   end
- 
+
   def show_segment
     cl = Chef::CookbookLoader.new
     begin
