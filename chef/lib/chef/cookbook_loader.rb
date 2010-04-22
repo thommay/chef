@@ -161,14 +161,14 @@ class Chef
 
     def satisfy(cookbook, req=nil)
       r = req.to_s
-      if r.nil? 
+      if r.nil? or r.empty?
         versions(cookbook)
       elsif r =~ PATTERN
         comp = $1 || "="
         ver = Chef::Cookbook::Metadata::Version.new $2
         versions(cookbook).select { |v| CMP[comp].call Chef::Cookbook::Metadata::Version.new(v), ver}
       else
-        raise ArgumentError, "Unrecognized dependency specification"
+        raise ArgumentError, "Unrecognized dependency specification: #{r}"
       end
     end
 
