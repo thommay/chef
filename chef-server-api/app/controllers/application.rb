@@ -262,18 +262,12 @@ class ChefServerApi::Application < Merb::Controller
     response
   end
   
-  def load_all_files(node_name=nil)
+  def load_all_files(node_name)
     cl = Chef::CookbookLoader.new
     valid_cookbooks = node_name ? specific_cookbooks(node_name, cl) : {} 
     cookbook_list = Hash.new
-    unless valid_cookbooks.empty?
-      valid_cookbooks.each_pair do |name, versions|
-        cookbook_list[name.to_s] = load_cookbook_files(cl.satisfy_all(name, versions)[0])
-      end
-    else
-      cl.each do |cookbook|
-        cookbook_list[cookbook.name.to_s] = load_cookbook_files(cookbook) 
-      end
+    valid_cookbooks.each_pair do |name, versions|
+      cookbook_list[name.to_s] = load_cookbook_files(cl.satisfy_all(name, versions)[0])
     end
     cookbook_list
   end
