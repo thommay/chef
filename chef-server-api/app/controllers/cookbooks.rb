@@ -33,8 +33,8 @@ class ChefServerApi::Cookbooks < ChefServerApi::Application
   def index
     cl = Chef::CookbookLoader.new
     cookbook_list = Hash.new
-    cl.each do |cookbook|
-      cookbook_list[cookbook.name] = absolute_slice_url(:cookbook, :id => cookbook.name.to_s) 
+    cl.cookbook.keys.sort.each do |cookbook|
+      cookbook_list[cookbook] = absolute_slice_url(:cookbook, :id => cookbook) 
     end
     display cookbook_list 
   end
