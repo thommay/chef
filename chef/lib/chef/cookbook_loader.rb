@@ -136,7 +136,7 @@ class Chef
       @cookbook.keys.sort { |a,b| a.to_s <=> b.to_s }.each do |cname|
         versions(cname).each do |ver|
           pos = @cookbook[cname][ver]
-          yield @cookbooks[pos][0]
+          yield @cookbooks[pos]
         end
       end
     end

@@ -74,7 +74,7 @@ class Chef
     # === Returns
     # true:: Always returns true
     def load_attributes()
-      @cookbook_loader.each do |cookbook|
+      @cookbook_loader.each do |cookbook,metadata|
         cookbook.load_attributes(@node)
       end
 
@@ -89,7 +89,7 @@ class Chef
     # === Returns
     # true:: Always returns true
     def load_definitions()
-      @cookbook_loader.each do |cookbook|
+      @cookbook_loader.each do |cookbook,metadata|
         hash = cookbook.load_definitions
         @definitions.merge!(hash)
       end
@@ -102,7 +102,7 @@ class Chef
     # === Returns
     # true:: Always returns true
     def load_libraries()
-      @cookbook_loader.each do |cookbook|
+      @cookbook_loader.each do |cookbook,metadata|
         cookbook.load_libraries
       end
       true
@@ -114,7 +114,7 @@ class Chef
     # === Returns
     # true:: Always returns true
     def load_providers()
-      @cookbook_loader.each do |cookbook|
+      @cookbook_loader.each do |cookbook,metadata|
         cookbook.load_providers
       end
       true
@@ -126,7 +126,7 @@ class Chef
     # === Returns
     # true:: Always returns true
     def load_resources()
-      @cookbook_loader.each do |cookbook|
+      @cookbook_loader.each do |cookbook,metadata|
         cookbook.load_resources
       end
       true

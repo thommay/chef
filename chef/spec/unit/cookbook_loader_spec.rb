@@ -55,7 +55,7 @@ describe Chef::CookbookLoader do
   describe "each" do
     it "should allow you to iterate over cookbooks with each" do
       seen = Hash.new
-      @cl.each do |cb|
+      @cl.each do |cb,md|
         seen[cb.name] = true
       end
       seen.should have_key(:openldap)
@@ -64,7 +64,7 @@ describe Chef::CookbookLoader do
 
     it "should iterate in alphabetical order" do
       seen = Array.new 
-      @cl.each do |cb|
+      @cl.each do |cb,md|
         seen << cb.name
       end
       seen[0].should == :apache2
@@ -76,15 +76,15 @@ describe Chef::CookbookLoader do
     it "should find all the cookbooks in the cookbook path" do
       Chef::Config.cookbook_path << File.join(File.dirname(__FILE__), "..", "data", "hidden-cookbooks") 
       @cl.load_cookbooks
-      @cl.detect { |cb| cb.name == :openldap }.should_not eql(nil)
-      @cl.detect { |cb| cb.name == :apache2 }.should_not eql(nil)
+      @cl.detect { |cb,md| cb.name == :openldap }.should_not eql(nil)
+      @cl.detect { |cb,md| cb.name == :apache2 }.should_not eql(nil)
     end
   
     it "should load multiple versions of the same cookbook" do
       Chef::Config.cookbook_path << File.join(File.dirname(__FILE__), "..", "data", "grill") 
       @cl.load_cookbooks
-      @cl.detect { |cb| cb.name == :openldap }.should_not eql(nil)
-      @cl.detect { |cb| cb.name == :apache2 }.should_not eql(nil)
+      @cl.detect { |cb,md| cb.name == :openldap }.should_not eql(nil)
+      @cl.detect { |cb,md| cb.name == :apache2 }.should_not eql(nil)
       @cl.cookbook[:openldap].length.should eql(2)
     end
   
@@ -92,8 +92,8 @@ describe Chef::CookbookLoader do
       Chef::Config.solo true
       Chef::Config.cookbook_path File.join(File.dirname(__FILE__), "..", "data", "solo")
       @cl.load_cookbooks
-      @cl.detect { |cb| cb.name == :openldap }.should_not eql(nil)
-      @cl.detect { |cb| cb.name == :apache2 }.should_not eql(nil)
+      @cl.detect { |cb,md| cb.name == :openldap }.should_not eql(nil)
+      @cl.detect { |cb,md| cb.name == :apache2 }.should_not eql(nil)
       @cl.cookbook[:openldap].length.should eql(2)
     end
 
