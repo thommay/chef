@@ -56,17 +56,8 @@ class Chef
           cookbook_name = File.basename(cookbook).to_sym
           cookbook_settings[cookbook_name] ||= Mash.new
 
-          # If we have a metadata file, there's only one version of the cookbook, so
-          # just process it.
-          if File.exists?(File.join(cookbook, "metadata.json"))
+          if %w{ recipes attributes templates files resources providers libraries definitions }.any? {|f| File.exists?(File.join(cookbook, f))}
             (ver, settings) = process_cb(cookbook, cookbook_name)
-            if cookbook_settings[cookbook_name].has_key?(ver)
-              cookbook_settings[cookbook_name][ver] = Chef::Mixin::DeepMerge.merge(cookbook_settings[cookbook_name][ver], settings)
-            else
-              cookbook_settings[cookbook_name][ver] = settings
-            end
-          elsif File.directory?(File.join(cookbook, "recipes"))
-            (ver, settings) = process_cb(cookbook, cookbook_name, "0.0")
             if cookbook_settings[cookbook_name].has_key?(ver)
               cookbook_settings[cookbook_name][ver] = Chef::Mixin::DeepMerge.merge(cookbook_settings[cookbook_name][ver], settings)
             else
