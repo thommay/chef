@@ -85,6 +85,7 @@ class Chef
         @cookbook[cookbook] ||= Mash.new
         cookbook_settings[cookbook].each_key do |version|
           cb = Chef::Cookbook.new(cookbook)
+          cb.version version
           cb.attribute_files = cookbook_settings[cookbook][version][:attribute_files].values
           cb.definition_files = cookbook_settings[cookbook][version][:definition_files].values
           cb.recipe_files = cookbook_settings[cookbook][version][:recipe_files].values

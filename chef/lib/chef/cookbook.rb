@@ -37,6 +37,7 @@ class Chef
     # object<Chef::Cookbook>:: Duh. :)
     def initialize(name)
       @name = name
+      @version = Metadata::Version.new "0.0.0"
       @attribute_files = Array.new
       @attribute_names = Hash.new
       @definition_files = Array.new
@@ -167,6 +168,14 @@ class Chef
                                 collection, definitions, cookbook_loader)
       recipe.from_file(@recipe_files[@recipe_names[recipe_name]])
       recipe
+    end
+
+    def version(arg=nil)
+      if arg
+        @version = Metadata::Version.new arg
+      end
+      
+      @version.to_s
     end
 
     private
