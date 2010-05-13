@@ -310,7 +310,7 @@ class Chef
 
       def []=(key, value)
         if set_unless_value_present
-          if get_value(set_type_hash, key) != nil
+          if get_value(set_type_hash(false), key) != nil
             Chef::Log.debug("Not setting #{state.join("/")}/#{key} to #{value.inspect} because it has a #{@set_type} value already")
             return false
           end
@@ -324,7 +324,7 @@ class Chef
         # supporting one more single-use style.
         @state.pop if @has_been_read && @state.last == key
 
-        set_value(set_type_hash, key, value)
+        set_value(set_type_hash(false), key, value)
         value
       end
 
@@ -366,7 +366,7 @@ class Chef
 
       def value_or_descend(data_hash, key, auto_vivifiy=false)
         if auto_vivifiy
-          set_type_hash = auto_vivifiy(set_type_hash, key)
+          set_type_hash = auto_vivifiy(set_type_hash(false), key)
           set_type_hash(true)[key] = set_type_hash(true)[key]
         else
           return nil if data_hash == nil
