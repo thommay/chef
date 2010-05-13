@@ -86,7 +86,7 @@ describe Chef::Node do
     end
 
     it "should let you go deep with attribute?" do
-      @node.set["battles"]["people"]["wonkey"] = true
+      @node.attribute["battles"]["people"]["wonkey"] = true
       @node["battles"]["people"].attribute?("wonkey").should == true
       @node["battles"]["people"].attribute?("snozzberry").should == false 
     end
