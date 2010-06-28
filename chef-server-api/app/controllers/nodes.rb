@@ -17,6 +17,7 @@
 # limitations under the License.
 #
 
+require 'chef/cookbook/metadata/version'
 require 'chef' / 'node'
 
 class Nodes < Application
@@ -26,6 +27,17 @@ class Nodes < Application
   before :authenticate_every 
   before :admin_or_requesting_node, :only => [ :update, :destroy, :cookbooks ]
   
+  CMP = {
+    "<<" => lambda { |v, r| v < r },
+    "<=" => lambda { |v, r| v <= r },
+    "="  => lambda { |v, r| v == r },
+    ">=" => lambda { |v, r| v >= r },
+    ">>" => lambda { |v, r| v > r }
+  }
+
+  qcmp = CMP.keys.map { |k| Regexp.quote k }.join "|"
+  PATTERN = /\A\s*(#{qcmp})?\s*(#{Chef::Cookbook::Metadata::Version::PATTERN})\s*\z/
+
   def index
     @node_list = Chef::Node.cdb_list 
     display(@node_list.inject({}) do |r,n|
@@ -95,6 +107,20 @@ class Nodes < Application
   end
 
   private
+
+  def satisfy(cookbook, req=nil)
+    r = req.to_s
+    versions = Chef::CookbookVersion.cdb_by_name(cookbook_name)
+    if r.nil? or r.empty?
+      versions
+    elsif r =~ PATTERN
+      comp = $1 || "="
+      ver = Chef::Cookbook::Metadata::Version.new $2
+      versions.select { |v| CMP[comp].call Chef::Cookbook::Metadata::Version.new(v), ver}
+    else
+      raise ArgumentError, "Unrecognized dependency specification: #{r}"
+    end
+  end
 
   def load_all_files(node_name)
     all_cookbooks = Chef::CookbookVersion.cdb_list(true).inject({}) {|hsh,record| hsh[record.name] = record ; hsh}
