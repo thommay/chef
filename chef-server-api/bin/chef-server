@@ -29,7 +29,6 @@ $:.unshift(File.expand_path(File.dirname(__FILE__) + '/../lib'))
 
 require 'chef'
 require 'chef-server-api'
-
 # Ensure the chef gem we load is the same version as the chef server
 unless defined?(Chef)
   gem "chef", "=" + CHEF_SERVER_VERSION
@@ -68,6 +67,9 @@ else
     File.join("/etc", "chef", "server.rb")
   )
 end
+
+#Select the authentication module
+Chef::WebUIUser.select_authentication_module
 
 Chef::Log.init(Chef::Config[:log_location])
 Chef::Log.level = Chef::Config[:log_level]
