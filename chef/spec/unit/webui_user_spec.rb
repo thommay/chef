@@ -31,7 +31,7 @@ describe "Chef::WebUIUser" do
     Dir[File.join(File.dirname(__FILE__),'..','..','lib','chef', 'web_ui_user', '*.rb')].sort.each { |lib| load lib }
     load File.join(File.dirname(__FILE__),'..','..','lib','chef','webui_user.rb')  
     Chef::Config.stub!(:[]).with(:web_ui_authentication_module).and_return(lambda{Chef::WebUIUser::CDBAuthModule})    
-    Chef::WebUIUser.select_authorisation_module    
+    Chef::WebUIUser.select_authentication_module    
   end
   
   before do
