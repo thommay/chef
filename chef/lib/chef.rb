@@ -27,7 +27,6 @@ require 'chef/shell_out'
 require 'chef/daemon'
 require 'chef/webui_user'
 require 'chef/openid_registration'
-
 require 'chef/run_status'
 require 'chef/handler'
 require 'chef/handler/json_file'

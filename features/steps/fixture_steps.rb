@@ -166,6 +166,23 @@ Before do
         u
       end
     },
+    'user' => {
+      'alan_smith' => Proc.new do
+        u = Chef::WebUIUser.new
+        u.name = "alan_smith"
+        u.admin = true
+        u.openid = ""
+#        u.set_password( 'valid_password' , 'valid_password' )
+        u.new_password = 'valid_password'
+        u.confirm_new_password = 'valid_password'
+        u
+      end,
+      'susan_jones' => Proc.new do
+        u = Chef::WebUIUser.new
+        u.name = "susan_jones"
+        u
+      end
+    },
     'node' => {
       'webserver' => Proc.new do
         n = Chef::Node.new
