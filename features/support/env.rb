@@ -75,12 +75,17 @@ def delete_databases
   end
 end
 
+
+
+
+
 def create_databases
   Chef::Log.info("Creating bootstrap databases")
   cdb = Chef::CouchDB.new(Chef::Config[:couchdb_url], "chef_integration")
   cdb.create_db
   cdb.create_id_map
   Chef::Node.create_design_document
+  Chef::WebUIUser.create_design_document
   Chef::Role.create_design_document
   Chef::DataBag.create_design_document
   Chef::ApiClient.create_design_document
@@ -122,6 +127,7 @@ end
 setup_logging
 cleanup
 delete_databases
+Chef::WebUIUser.select_authentication_module
 create_databases
 prepare_replicas
 
