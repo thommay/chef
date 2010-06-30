@@ -16,82 +16,72 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+#if Chef::Config && Chef::Config.class == Module
+  # Whoops.. Chef::Config is pointing at the Config Module used by rbconfig!
+  # This seems to happen when called via Knife.  Reload config to fix the problem
+#  load 'chef/config.rb'
+#else
+  require 'chef/config'
+#end
 
-require 'chef/config'
 require 'chef/mixin/params_validate'
-require 'chef/couchdb'
 require 'chef/index_queue'
 require 'digest/sha1'
 require 'json'
-  
+require 'uri'
+
+Dir[File.join(File.dirname(__FILE__), 'web_ui_user', '*.rb')].sort.each { |lib| require lib }
 
 class Chef
   class WebUIUser
     
-    attr_accessor :name, :validated, :admin, :openid, :couchdb
-    attr_reader   :password, :salt, :couchdb_id, :couchdb_rev
+    attr_accessor :validated, :admin, :name, :openid
+    attr_reader   :password, :salt, :couchdb_id, :couchdb_rev, :authentication_status, :ui_suppressed_fields
+    attr_accessor :new_password, :confirm_new_password
     
     include Chef::Mixin::ParamsValidate
     include Chef::IndexQueue::Indexable
     
-    DESIGN_DOCUMENT = {
-      "version" => 3,
-      "language" => "javascript",
-      "views" => {
-        "all" => {
-          "map" => <<-EOJS
-            function(doc) {
-              if (doc.chef_type == "webui_user") {
-                emit(doc.name, doc);
-              }
-            }
-          EOJS
-        },
-        "all_id" => {
-          "map" => <<-EOJS
-          function(doc) {
-            if (doc.chef_type == "webui_user") {
-              emit(doc.name, doc.name);
-            }
-          }
-          EOJS
-        },
-      },
-    }
-    
+   
+    def self.select_authentication_module(auth_module_proc=Chef::Config[:web_ui_authentication_module])
+      self.send(:include,auth_module_proc.call)
+    end
+  
     # Create a new Chef::WebUIUser object.
     def initialize(opts={})
       @name, @salt, @password = opts['name'], opts['salt'], opts['password']
+      @new_password, @confirm_new_password = opts['new_password'], opts['confirm_new_password']
       @openid, @couchdb_rev, @couchdb_id = opts['openid'], opts['_rev'], opts['_id']
       @admin = false
-      @couchdb = Chef::CouchDB.new
     end
-    
-    def name=(n)
-      @name = n.gsub(/\./, '_')
-    end
-    
+   
     def admin?
       admin
     end
-    
-    # Set the password for this object.
-    def set_password(password, confirm_password=password) 
-      raise ArgumentError, "Passwords do not match" unless password == confirm_password
-      raise ArgumentError, "Password cannot be blank" if (password.nil? || password.length==0)
-      raise ArgumentError, "Password must be a minimum of 6 characters" if password.length < 6
-      generate_salt
-      @password = encrypt_password(password)      
+
+    def verify_password(given_password)
+      r = Chef::REST.new(Chef::Config[:chef_server_url])
+      r.post_rest("users/#{URI.escape(name,URI::REGEXP::PATTERN::RESERVED)}/authentication",{ :given_password => given_password })["authenticated"]
     end
     
-    def set_openid(given_openid)
-      @openid = given_openid
-    end 
-    
-    def verify_password(given_password)
-      encrypt_password(given_password) == @password
-    end 
-    
+    # Transform the node to a Hash
+    def to_hash
+      # TODO: DRY this and to_json up!
+      result = {
+        'name' => name,
+        'salt' => salt,
+        'password' => password,
+        'openid' => openid,
+        'admin' => admin,
+        'chef_type' => 'webui_user'
+      }
+      result["_id"]  = @couchdb_id if @couchdb_id  
+      result["_rev"] = @couchdb_rev if @couchdb_rev
+      result["new_password"] = @new_password if @new_password
+      result["confirm_new_password"] = @confirm_new_password if @confirm_new_password
+      result
+    end    
+
     # Serialize this object as a hash 
     def to_json(*a)
       attributes = Hash.new
@@ -107,6 +97,8 @@ class Chef
       }
       result["_id"]  = @couchdb_id if @couchdb_id  
       result["_rev"] = @couchdb_rev if @couchdb_rev
+      result["new_password"] = @new_password if @new_password
+      result["confirm_new_password"] = @confirm_new_password if @confirm_new_password
       result.to_json(*a)
     end
     
@@ -116,18 +108,7 @@ class Chef
       me.admin = o["admin"]
       me
     end
-    
-    # List all the Chef::WebUIUser objects in the CouchDB.  If inflate is set to true, you will get
-    # the full list of all registration objects.  Otherwise, you'll just get the IDs
-    def self.cdb_list(inflate=false)
-      rs = Chef::CouchDB.new.list("users", inflate)
-      if inflate
-        rs["rows"].collect { |r| r["value"] }
-      else
-        rs["rows"].collect { |r| r["key"] }
-      end
-    end
-    
+  
     def self.list(inflate=false)
       r = Chef::REST.new(Chef::Config[:chef_server_url])
       if inflate
@@ -141,45 +122,23 @@ class Chef
       end
     end
     
-    # Load an WebUIUser by name from CouchDB
-    def self.cdb_load(name)
-      Chef::CouchDB.new.load("webui_user", name)
-    end
-    
     # Load a User by name
     def self.load(name)
-      r = Chef::REST.new(Chef::Config[:chef_server_url])
-      r.get_rest("users/#{name}")
-    end
-    
-    
-    # Whether or not there is an WebUIUser with this key.
-    def self.has_key?(name)
-      Chef::CouchDB.new.has_key?("webui_user", name)
-    end
-    
-    # Remove this WebUIUser from the CouchDB
-    def cdb_destroy
-      couchdb.delete("webui_user", @name, @couchdb_rev)
+        r = Chef::REST.new(Chef::Config[:chef_server_url])
+        r.get_rest("users/#{URI.escape(name,URI::REGEXP::PATTERN::RESERVED)}")
     end
     
     # Remove this WebUIUser via the REST API
     def destroy
       r = Chef::REST.new(Chef::Config[:chef_server_url])
-      r.delete_rest("users/#{@name}")
-    end
-    
-    # Save this WebUIUser to the CouchDB
-    def cdb_save
-      results = couchdb.store("webui_user", @name, self)
-      @couchdb_rev = results["rev"]
+      r.delete_rest("users/#{URI.escape(name,URI::REGEXP::PATTERN::RESERVED)}")
     end
     
     # Save this WebUIUser via the REST API
     def save
       r = Chef::REST.new(Chef::Config[:chef_server_url])
       begin
-        r.put_rest("users/#{@name}", self)
+        r.put_rest("users/#{URI.escape(name,URI::REGEXP::PATTERN::RESERVED)}", self)
       rescue Net::HTTPServerException => e
         if e.response.code == "404"
           r.post_rest("users", self)
@@ -196,37 +155,22 @@ class Chef
       r.post_rest("users", self)
       self
     end
-    
-    # Set up our CouchDB design document
-    def self.create_design_document(couchdb=nil)
-      couchdb ||= Chef::CouchDB.new
-      couchdb.create_design_document("users", DESIGN_DOCUMENT)
-    end
-    
-    #return true if an admin user exists. this is pretty expensive (O(n)), should think of a better way (nuo)
+
     def self.admin_exist
-      users = self.cdb_list
-      users.each do |u|
-        user = self.cdb_load(u)
-        if user.admin
-          return user.name
-        end
-      end
-      nil
+      self.list.any?{ |u,url| self.load(u).admin? }
     end
     
-    protected
-    
-      def generate_salt
-        @salt = Time.now.to_s
-        chars = ("a".."z").to_a + ("A".."Z").to_a + ("0".."9").to_a
-        1.upto(30) { |i| @salt << chars[rand(chars.size-1)] }
-        @salt
+    def escaped_name
+      URI.escape(name, URI::REGEXP::PATTERN::RESERVED)
+    end
+
+
+
+    def raise_error_if_present(*args)
+      args.each do |arg|
+        raise ArgumentError, "#{arg} cannot be set with the #{self.instance_auth_module_name}" if self.send(arg) && self.send(arg) != ''
       end
-    
-      def encrypt_password(password)
-        Digest::SHA1.hexdigest("--#{salt}--#{password}--")
-      end
-    
+    end
+  
   end
 end

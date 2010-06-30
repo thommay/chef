@@ -54,10 +54,10 @@ Merb::Router.prepare do
   match('/users/complete').to(:controller => 'users', :action => 'complete').name(:users_complete)
   match('/users/logout').to(:controller => 'users', :action => 'logout').name(:users_logout)
   match('/users/new').to(:controller => 'users', :action => 'new').name(:users_new)
-  match('/users/:user_id/edit').to(:controller => 'users', :action => 'edit').name(:users_edit)
-  match('/users/:user_id').to(:controller => 'users', :action => 'show').name(:users_show)
-  match('/users/:user_id/delete', :method => 'delete').to(:controller => 'users', :action => 'destroy').name(:users_delete)
-  match('/users/:user_id/update', :method => 'put').to(:controller => 'users', :action => 'update').name(:users_update)
+  match('/users/:user_id/edit', :user_id => /[^\/]+/).to(:controller => 'users', :action => 'edit').name(:users_edit)
+  match('/users/:user_id', :user_id => /[^\/]+/).to(:controller => 'users', :action => 'show').name(:users_show)
+  match('/users/:user_id/delete', :user_id => /[^\/]+/, :method => 'delete').to(:controller => 'users', :action => 'destroy').name(:users_delete)
+  match('/users/:user_id/update', :user_id => /[^\/]+/, :method => 'put').to(:controller => 'users', :action => 'update').name(:users_update)
 
   match('/').to(:controller => 'nodes', :action =>'index').name(:top)
 end
