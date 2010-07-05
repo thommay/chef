@@ -122,8 +122,25 @@ class Nodes < Application
     end
   end
 
-  def load_all_files(node_name)
-    all_cookbooks = Chef::CookbookVersion.cdb_list(true).inject({}) {|hsh,record| hsh[record.name] = record ; hsh}
+  def satisfy_all(cookbook, reqs=[])
+    vers = Array.new
+
+    if reqs.empty? 
+      return Chef::CookbookVersion.cdb_load(cookbook,  satisfy(cookbook).last)
+    end
+
+    reqs.each do |pat|
+      v = satisfy(cookbook, pat)
+      raise ArgumentError, "Can't satisfy dependency #{pat} for cookbook #{cookbook}" if v.empty?
+      if vers.empty?
+        vers = v
+      else
+        vers = vers & v
+        raise ArgumentError, "Conflicting dependencies for #{cookbook}" if vers.empty?
+      end
+    end
+    Chef::CookbookVersion.cdb_load(cookbook, vers.last)
+  end
 
     included_cookbooks = cookbooks_for_node(node_name, all_cookbooks)
     nodes_cookbooks = Hash.new
