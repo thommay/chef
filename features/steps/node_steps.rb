@@ -35,13 +35,13 @@ Given /^a validated node with an empty runlist$/ do
 end
 
 
-Given /^it includes the recipe '(.+)'$/ do |recipe|
+Given /^it includes the recipe '([^\']+)'$/ do |recipe|
   self.recipe = recipe
   client.node.run_list << recipe
   client.save_node
 end
 
-Given /it includes the recipe '(.+)' at version '(.+)'$/ do |recipe, version|
+Given /^it includes the recipe '([^\']+)' at version '([^\']+)'$/ do |recipe, version|
   self.recipe = "recipe[#{recipe},#{version}]"
   client.node.run_list << "recipe[#{recipe},#{version}]"
   client.save_node
@@ -53,7 +53,7 @@ Given /^it includes no recipes$/ do
   client.save_node
 end
 
-Given /^it includes the role '(.+)'$/ do |role|
+Given /^it includes the role '([^\']+)'$/ do |role|
   self.recipe = "role[#{role}]"
   client.node.run_list << "role[#{role}]" 
   client.save_node
