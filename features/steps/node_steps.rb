@@ -41,6 +41,12 @@ Given /^it includes the recipe '(.+)'$/ do |recipe|
   client.save_node
 end
 
+Given /it includes the recipe '(.+)' at version '(.+)'$/ do |recipe, version|
+  self.recipe = "recipe[#{recipe},#{version}]"
+  client.node.run_list << "recipe[#{recipe},#{version}]"
+  client.save_node
+end
+
 Given /^it includes no recipes$/ do 
   self.recipe = "" 
   client.node.run_list.reset!
