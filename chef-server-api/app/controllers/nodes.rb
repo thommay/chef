@@ -116,11 +116,11 @@ class Nodes < Application
     node = Chef::Node.cdb_load(node_name)
 
     # expand returns a RunListExpansion which contains recipes, default and override attrs [cb]
-    recipes = node.run_list.expand('couchdb').recipes
+    items = node.run_list.expand('couchdb').run_list_items
 
     # walk run list and accumulate included dependencies
-    recipes.inject({}) do |included_cookbooks, recipe|
-      expand_cookbook_deps(included_cookbooks, all_cookbooks, recipe)
+    items.select{|i| i.recipe?}.inject({}) do |included_cookbooks, rli|
+      expand_cookbook_deps(included_cookbooks, all_cookbooks, rli)
       included_cookbooks
     end
   end
@@ -133,12 +133,18 @@ class Nodes < Application
   #   run_list_items   == name of cookbook to include
   def expand_cookbook_deps(included_cookbooks, all_cookbooks, run_list_item)
     # determine the run list item's parent cookbook, which might be run_list_item in the default case
-    cookbook_name = (run_list_item[/^(.+)::/, 1] || run_list_item.to_s)
-    Chef::Log.debug("Node requires #{cookbook_name}")
+    version = "latest"
+    if run_list_item.kind_of? Chef::RunList::RunListItem
+      cookbook_name = (run_list_item.name[/^(.+)::/, 1] || run_list_item.name)
+      version = run_list_item.version unless run_list_item.version.nil?
+    else
+      cookbook_name = (run_list_item[/^(.+)::/, 1] || run_list_item.to_s)
+    end
 
+    Chef::Log.debug("Node requires #{cookbook_name} at #{version}")
     # include its dependencies
-    included_cookbooks[cookbook_name] = all_cookbooks[cookbook_name]
-    if !all_cookbooks[cookbook_name]
+    included_cookbooks[cookbook_name] = Chef::CookbookVersion.cdb_load(cookbook_name, version)
+    if !included_cookbooks[cookbook_name]
       return false
       # NOTE [dan/cw] We don't think changing this to an exception breaks stuff.
       # Chef::Log.warn "#{__FILE__}:#{__LINE__}: in expand_cookbook_deps, cookbook/role #{cookbook_name} could not be found, ignoring it in cookbook expansion"
@@ -147,7 +153,7 @@ class Nodes < Application
 
     # TODO: 5/27/2010 cw: implement dep_version_constraints according to
     # http://wiki.opscode.com/display/chef/Metadata#Metadata-depends,
-    all_cookbooks[cookbook_name].metadata.dependencies.each do |depname, dep_version_constraints|
+    included_cookbooks[cookbook_name].metadata.dependencies.each do |depname, dep_version_constraints|
       # recursively expand dependencies into included_cookbooks unless
       # we've already done it
       unless included_cookbooks[depname]
