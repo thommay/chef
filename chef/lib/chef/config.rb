@@ -203,6 +203,7 @@ class Chef
     web_ui_key "/etc/chef/webui.pem"
     web_ui_admin_user_name  "admin"
     web_ui_admin_default_password "p@ssw0rd1"
+    web_ui_authentication_module lambda{Chef::WebUIUser::CDBAuthModule}
 
     # Server Signing CA
     #
