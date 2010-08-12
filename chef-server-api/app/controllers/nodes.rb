@@ -17,6 +17,7 @@
 # limitations under the License.
 #
 
+require 'chef/cookbook/metadata/version'
 require 'chef' / 'node'
 
 class Nodes < Application
@@ -26,6 +27,17 @@ class Nodes < Application
   before :authenticate_every 
   before :admin_or_requesting_node, :only => [ :update, :destroy, :cookbooks ]
   
+  CMP = {
+    "<<" => lambda { |v, r| v < r },
+    "<=" => lambda { |v, r| v <= r },
+    "="  => lambda { |v, r| v == r },
+    ">=" => lambda { |v, r| v >= r },
+    ">>" => lambda { |v, r| v > r }
+  }
+
+  qcmp = CMP.keys.map { |k| Regexp.quote k }.join "|"
+  PATTERN = /\A\s*(#{qcmp})?\s*(#{Chef::Cookbook::Metadata::Version::PATTERN})\s*\z/
+
   def index
     @node_list = Chef::Node.cdb_list 
     display(@node_list.inject({}) do |r,n|
@@ -96,13 +108,49 @@ class Nodes < Application
 
   private
 
-  def load_all_files(node_name)
-    all_cookbooks = Chef::CookbookVersion.cdb_list(true).inject({}) {|hsh,record| hsh[record.name] = record ; hsh}
+  def satisfy(cookbook, req=nil)
+    r = req.to_s
+    begin
+      versions = Chef::CookbookVersion.cdb_by_name(cookbook)[cookbook].sort
+    rescue NoMethodError
+      raise PreconditionFailed, "cookbook #{cookbook} does not exist"
+    end
+    if r.nil? or r.empty? or r == "latest"
+      versions
+    elsif r =~ PATTERN
+      comp = $1 || "="
+      ver = Chef::Cookbook::Metadata::Version.new $2
+      versions.select { |v| CMP[comp].call Chef::Cookbook::Metadata::Version.new(v), ver}
+    else
+      raise ArgumentError, "Unrecognized dependency specification: #{r}"
+    end
+  end
 
-    included_cookbooks = cookbooks_for_node(node_name, all_cookbooks)
+  def satisfy_all(cookbook, reqs=[])
+    vers = Array.new
+
+    if reqs.empty? 
+      return Chef::CookbookVersion.cdb_load(cookbook,  satisfy(cookbook).last)
+    end
+
+    reqs.each do |pat|
+      v = satisfy(cookbook, pat)
+      raise ArgumentError, "Can't satisfy dependency #{pat} for cookbook #{cookbook}" if v.empty?
+      if vers.empty?
+        vers = v
+      else
+        vers = vers & v
+        raise ArgumentError, "Conflicting dependencies for #{cookbook}" if vers.empty?
+      end
+    end
+    Chef::CookbookVersion.cdb_load(cookbook, vers.last)
+  end
+
+  def load_all_files(node_name)
+    included_cookbooks = cookbooks_for_node(node_name)
     nodes_cookbooks = Hash.new
-    included_cookbooks.each do |cookbook_name, cookbook|
-      next unless cookbook
+    included_cookbooks.each_pair do |cookbook_name, versions|
+      cookbook = satisfy_all(cookbook_name, versions)
 
       nodes_cookbooks[cookbook_name.to_s] = cookbook.generate_manifest_with_urls{|opts| absolute_url(:cookbook_file, opts) }
     end
@@ -111,7 +159,7 @@ class Nodes < Application
   end
 
   # returns name -> CookbookVersion for all cookbooks included on the given node.
-  def cookbooks_for_node(node_name, all_cookbooks)
+  def cookbooks_for_node(node_name)
     # get node's explicit dependencies
     node = Chef::Node.cdb_load(node_name)
 
@@ -120,7 +168,7 @@ class Nodes < Application
 
     # walk run list and accumulate included dependencies
     items.select{|i| i.recipe?}.inject({}) do |included_cookbooks, rli|
-      expand_cookbook_deps(included_cookbooks, all_cookbooks, rli)
+      expand_cookbook_deps(included_cookbooks, rli)
       included_cookbooks
     end
   end
@@ -131,9 +179,13 @@ class Nodes < Application
   #                         recursed into
   #   all_cookbooks    == hash of name -> CookbookVersion, all cookbooks available
   #   run_list_items   == name of cookbook to include
-  def expand_cookbook_deps(included_cookbooks, all_cookbooks, run_list_item)
+  def expand_cookbook_deps(included_cookbooks, run_list_item, constraints = nil)
     # determine the run list item's parent cookbook, which might be run_list_item in the default case
     version = "latest"
+
+    # Fortunately or otherwise we need to deal with both RunListItem objects
+    # and bare strings. strings will come to us via the dependency solver, and
+    # I don't think it's valuable to bash them into an RLI just to avoid this.
     if run_list_item.kind_of? Chef::RunList::RunListItem
       cookbook_name = (run_list_item.name[/^(.+)::/, 1] || run_list_item.name)
       version = run_list_item.version unless run_list_item.version.nil?
@@ -142,25 +194,27 @@ class Nodes < Application
     end
 
     Chef::Log.debug("Node requires #{cookbook_name} at #{version}")
+    Chef::Log.debug("Requirement constrained by #{constraints}") if constraints
+
+    constraints ||= version
+
     # include its dependencies
-    included_cookbooks[cookbook_name] = Chef::CookbookVersion.cdb_load(cookbook_name, version)
-    if !included_cookbooks[cookbook_name]
+    included_cookbooks[cookbook_name] ||= Array.new
+    included_cookbooks[cookbook_name] << constraints
+
+    cb = satisfy_all(cookbook_name, constraints)
+
+    if !cb
       return false
       # NOTE [dan/cw] We don't think changing this to an exception breaks stuff.
       # Chef::Log.warn "#{__FILE__}:#{__LINE__}: in expand_cookbook_deps, cookbook/role #{cookbook_name} could not be found, ignoring it in cookbook expansion"
       # return included_cookbooks
     end
 
-    # TODO: 5/27/2010 cw: implement dep_version_constraints according to
-    # http://wiki.opscode.com/display/chef/Metadata#Metadata-depends,
-    included_cookbooks[cookbook_name].metadata.dependencies.each do |depname, dep_version_constraints|
-      # recursively expand dependencies into included_cookbooks unless
-      # we've already done it
-      unless included_cookbooks[depname]
-        unless expand_cookbook_deps(included_cookbooks, all_cookbooks, depname)
-          raise PreconditionFailed, "cookbook #{cookbook_name} depends on cookbook #{depname}, but #{depname} does not exist"
+    cb.metadata.dependencies.each do |depname, dep_version_constraints|
+      unless expand_cookbook_deps(included_cookbooks, depname, dep_version_constraints)
+        raise PreconditionFailed, "cookbook #{cookbook_name} depends on cookbook #{depname}, but #{depname} does not exist"
 
-        end
       end
     end
     true
