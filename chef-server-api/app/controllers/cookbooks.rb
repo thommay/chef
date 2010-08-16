@@ -60,11 +60,12 @@ class Cookbooks < Application
   end
 
   def index_recipes
-    display Chef::CookbookVersion.cdb_list(true).inject({}) do |memo, f| 
+    response = Chef::CookbookVersion.cdb_list(true).inject({}) do |memo, f| 
       memo[f.name] ||= {}
       memo[f.name][f.version] = f.recipe_filenames_by_name.keys
       memo
     end
+    display response
   end
 
   def show_versions
