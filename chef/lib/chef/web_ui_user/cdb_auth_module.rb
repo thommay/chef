@@ -125,7 +125,7 @@ class Chef
             EOJS
           },
         },
-      } unless self.const_defined?("DESIGN_DOCUMENT")
+      } unless itself.const_defined?("DESIGN_DOCUMENT")
 
       def auth_module_name
         'CDBAuthModuleClassMethods'
