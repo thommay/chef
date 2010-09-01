@@ -54,7 +54,7 @@ class Chef
         if group_name_list.kind_of?(Array)
           group_name_list.any?{ |g| member_of_group(g) }
         else
-          [@user[@group_membership_attribute.to_s]].flatten.include?(group_name_list)
+          res = [@user[@group_membership_attribute.to_s]].flatten.include?(group_name_list)             
         end
       end
 
