@@ -30,8 +30,7 @@ class Users < Application
   # List users, only if the user is admin.
   def index
     begin
-      # Replace the URLs from the rest query with URL escaped usernames
-      @users = Chef::WebUIUser.list.keys.inject({}) { |memo,u| memo[u]=URI.escape(u,URI::REGEXP::PATTERN::RESERVED) ; memo }
+      @users = Chef::WebUIUser.list 
       render
     rescue => e
       Chef::Log.error("#{e}\n#{e.backtrace.join("\n")}")
@@ -75,9 +74,7 @@ class Users < Application
       end
 
       if not params[:new_password].nil? and not params[:new_password].length == 0
-#        @user.set_password(params[:new_password], params[:confirm_new_password])
-         @user.new_password = params[:new_password]
-         @user.confirm_new_password = params[:confirm_new_password]
+        @user.set_password(params[:new_password], params[:confirm_new_password])
       end
 
       if params[:openid].length == 0 or params[:openid].nil?
@@ -110,8 +107,7 @@ class Users < Application
     begin
       @user = Chef::WebUIUser.new
       @user.name = params[:name]
-      @user.new_password = params[:password]
-      @user.confirm_new_password = params[:password2]
+      @user.set_password(params[:password], params[:password2])
       @user.admin = true if params[:admin]
       (params[:openid].length == 0 || params[:openid].nil?) ? @user.set_openid(nil) : @user.set_openid(URI.parse(params[:openid]).normalize.to_s)
       @user.create
@@ -180,10 +176,8 @@ class Users < Application
   
     def redirect_to_list_users(message)
       @_message = message
-      @users = Chef::WebUIUser.list.keys.inject({}) { |memo,u| memo[u]=URI.escape(u,URI::REGEXP::PATTERN::RESERVED) ; memo }
+      @users = Chef::WebUIUser.list 
       render :index
     end 
-
-    
 
 end

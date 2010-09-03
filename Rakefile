@@ -142,7 +142,6 @@ def start_chef_webui(type="normal")
   if mcid # parent
     @chef_webui_pid = mcid
   else # child
-    sleep 5 # As we are using the API exclusively including for creating the test user, need to hold on a couple of ticks
     case type
     when "normal"
       puts "Starting chef webui for development with './chef-server/bin/chef-server-webui -a thin -l debug -N'"
@@ -320,7 +319,7 @@ begin
     end
 
     namespace :api do
-      [ :nodes, :roles, :clients, :users ].each do |api|
+      [ :nodes, :roles, :clients ].each do |api|
           Cucumber::Rake::Task.new(api) do |apitask|
             apitask.profile = "api_#{api.to_s}"
           end
@@ -330,12 +329,6 @@ begin
               t.profile = "api_#{api.to_s}_#{action}"
             end
           end
-        end
-      end
-
-      namespace :users do
-        Cucumber::Rake::Task.new("authenticate") do |t|
-          t.profile = "api_users_authenticate"
         end
       end
 

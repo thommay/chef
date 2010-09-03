@@ -18,16 +18,7 @@
 #
 
 Merb::Router.prepare do
-  # Users
-
-
-  resources :users, :id => /[^\/]+/
-  match('/users/:id/authentication',
-        :id => /[^\/]+/,
-        :method => 'post').
-    to(:controller => "users", :action => "authenticate")
-
-
+  resources :users
 
   # Nodes
   resources :nodes, :id => /[^\/]+/

@@ -17,27 +17,25 @@
 
 
 require File.join("chef", "webui_user")
-require "uri"
 
 class Users < Application
   provides :json
 
   before :authenticate_every
   before :is_admin, :only => [ :create, :destroy, :update ]
-  log_params_filtered :given_password, :new_password, :confirm_new_password
 
   # GET to /users
   def index
     @user_list = Chef::WebUIUser.cdb_list
-    display(@user_list.inject({}) { |r,n| r[n] = absolute_url(:user, URI.escape(n,URI::REGEXP::PATTERN::RESERVED)); r })
+    display(@user_list.inject({}) { |r,n| r[n] = absolute_url(:user, n); r })
   end
 
   # GET to /users/:id
   def show
     begin
-      @user = Chef::WebUIUser.cdb_load(URI.unescape(params[:id]))
+      @user = Chef::WebUIUser.cdb_load(params[:id])
     rescue Chef::Exceptions::CouchDBNotFound => e
-      raise NotFound, "Cannot load user #{URI.unescape(params[:id])}"
+      raise NotFound, "Cannot load user #{params[:id]}"
     end
     display @user
   end
@@ -45,9 +43,9 @@ class Users < Application
   # PUT to /users/:id
   def update
     begin
-      Chef::WebUIUser.cdb_load(URI.unescape(params[:id]))
+      Chef::WebUIUser.cdb_load(params[:id])
     rescue Chef::Exceptions::CouchDBNotFound => e
-      raise NotFound, "Cannot load user #{URI.unescape(params[:id])}"
+      raise NotFound, "Cannot load user #{params[:id]}"
     end
     @user = params['inflated_object']
     @user.cdb_save
@@ -65,20 +63,14 @@ class Users < Application
     else
       raise Conflict, "User already exists"
     end
-    display({ :uri => absolute_url(:user, @user.escaped_name) } )
-  end
-
-  # POST to /users/:id/authentication
-  def authenticate
-    @user = Chef::WebUIUser.cdb_load(URI.unescape(params[:id]))
-    display({ :authenticated => @user.cdb_verify_password(params[:given_password]) })
+    display({ :uri => absolute_url(:user, @user.name) })
   end
 
   def destroy
     begin
-      @user = Chef::WebUIUser.cdb_load(URI.unescape(params[:id]))
+      @user = Chef::WebUIUser.cdb_load(params[:id])
     rescue Chef::Exceptions::CouchDBNotFound => e
-      raise NotFound, "Cannot load user #{URI.unescape(params[:id])}"
+      raise NotFound, "Cannot load user #{params[:id]}"
     end
     @user.cdb_destroy
     display @user

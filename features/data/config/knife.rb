@@ -9,4 +9,3 @@ validation_client_name   'chef-validator'
 validation_key           "#{Dir.tmpdir}/validation.pem"
 chef_server_url          'http://localhost:4000'
 cache_type               'BasicFile'
-

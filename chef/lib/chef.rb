@@ -15,6 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
 require 'chef/version'
 
 require 'extlib'
@@ -24,9 +25,11 @@ require 'chef/config'
 require 'chef/providers'
 require 'chef/resources'
 require 'chef/shell_out'
+
 require 'chef/daemon'
 require 'chef/webui_user'
 require 'chef/openid_registration'
+
 require 'chef/run_status'
 require 'chef/handler'
 require 'chef/handler/json_file'
