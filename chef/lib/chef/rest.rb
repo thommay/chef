@@ -206,10 +206,8 @@ class Chef
     def api_request(method, url, headers={}, data=false)
       json_body = data ? data.to_json : nil
       headers = build_headers(method, url, headers, json_body)
-
       retriable_rest_request(method, url, json_body, headers) do |rest_request|
         response = rest_request.call {|r| r.read_body}
-
         if response.kind_of?(Net::HTTPSuccess)
           if response['content-type'] =~ /json/
             JSON.parse(response.body.chomp)

@@ -31,6 +31,8 @@ validation_key   File.join(systmpdir, "validation.pem")
 client_key       File.join(systmpdir, "client.pem")
 web_ui_client_name "chef-webui"
 web_ui_key File.join(systmpdir, "webui.pem")
+web_ui_authentication_module lambda{Chef::WebUIUser::CDBAuthModule}
+
 
 solr_jetty_path File.join(supportdir, "solr", "jetty")
 solr_data_path File.join(supportdir, "solr", "data")

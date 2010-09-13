@@ -149,6 +149,23 @@ Before do
         r
       end
     },
+    'user' => {
+      'alan_smith' => Proc.new do
+        u = Chef::WebUIUser.new
+        u.name = "alan_smith"
+        u.admin = true
+        u.openid = ""
+#        u.set_password( 'valid_password' , 'valid_password' )
+        u.new_password = 'valid_password'
+        u.confirm_new_password = 'valid_password'
+        u
+      end,
+      'susan_jones' => Proc.new do
+        u = Chef::WebUIUser.new
+        u.name = "susan_jones"
+        u
+      end
+    },
     'node' => {
       'webserver' => Proc.new do
         n = Chef::Node.new
@@ -186,6 +203,11 @@ Before do
         n.run_list << "role[not_exist]"
         n
       end
+    },
+    'authentication' => {
+       'valid_password' => { :given_password => 'valid_password' },
+       'invalid_password' => { :given_password => 'invalid_password' },
+       'changed_password' => { :given_password => 'changed_password' }
     },
     'hash' => {
       'nothing'   => Hash.new,
@@ -252,6 +274,10 @@ Given /^an? '(.+)' named '(.+)' exists$/ do |stash_name, stash_key|
     #  @stash[stash_name].cdb_save
     if @stash[stash_name].respond_to?(:save)
       @stash[stash_name].save
+      # Only load the stash back from REST if load accepts a single parameter
+      if @stash[stash_name].class.method(:load).arity == 1
+        @stash[stash_name] = @stash[stash_name].class.load(@stash[stash_name].name)
+      end
     else
       request_path = "/#{stash_name.pluralize}"
       request(request_path, {
