@@ -16,7 +16,7 @@ cat <<'EOP'
 EOP
 ) > /tmp/validation.pem
 awk NF /tmp/validation.pem > /etc/chef/validation.pem
-rm /tmp/validation.pem
+rm -f /tmp/validation.pem
 
 (
 cat <<'EOP'

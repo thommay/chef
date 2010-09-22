@@ -46,10 +46,10 @@ describe Chef::RunList::RunListItem do
     end
 
     it "parses a qualified recipe with a version" do
-      item = Chef::RunList::RunListItem.new("recipe[rage,0.1.0]")
+      item = Chef::RunList::RunListItem.new("recipe[rage@0.1.0]")
       item.should be_a_recipe
       item.should_not be_a_role
-      item.to_s.should == 'recipe[rage,0.1.0]'
+      item.to_s.should == 'recipe[rage@0.1.0]'
       item.name.should == 'rage'
       item.version.should == '0.1.0'
     end
@@ -91,8 +91,8 @@ describe Chef::RunList::RunListItem do
     end
     
     it "is not equal to another run list item with the same name and type but different version" do
-      item1 = Chef::RunList::RunListItem.new('recipe[lrf,0.1.0]')
-      item2 = Chef::RunList::RunListItem.new('recipe[lrf,0.2.0]')
+      item1 = Chef::RunList::RunListItem.new('recipe[lrf@0.1.0]')
+      item2 = Chef::RunList::RunListItem.new('recipe[lrf@0.2.0]')
       item1.should_not == item2
     end
   end
