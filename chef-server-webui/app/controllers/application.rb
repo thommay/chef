@@ -237,7 +237,7 @@ class Application < Merb::Controller
         recipes.map{ |rn| rn == "default" ? "#{cb} #{ver}" : "#{cb}::#{rn} #{ver}" }
       end
     end
-    all_recipes.flatten.uniq
+    all_recipes.flatten.uniq.sort
   end
 
   def convert_newline_to_br(string)
